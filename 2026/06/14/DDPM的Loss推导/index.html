@@ -19,25 +19,29 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"yankang18.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":"flat"},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.json","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
 
-    <meta name="description" content="一个简约上档次的个人博客，分享技术、生活与思考。">
-<meta property="og:type" content="website">
-<meta property="og:title" content="我的博客">
-<meta property="og:url" content="https://yankang18.github.io/index.html">
+    <meta name="description" content="0. DDPM的优化目标 扩散模型的最终目标是学习一个从噪声生成真实数据的分布 pθ(x0)p_\theta(x_0)pθ​(x0​)。最直接的方法是极大似然估计： max⁡θlog⁡pθ(x0)\max_{\theta} \log p_{\theta}(x_0) θmax​logpθ​(x0​) 其中x0x_0x0​表示训练图片，pθp_{\theta}pθ​为参数为θ\thetaθ的模型生成图">
+<meta property="og:type" content="article">
+<meta property="og:title" content="DDPM的Loss推导详解">
+<meta property="og:url" content="https://yankang18.github.io/2026/06/14/DDPM%E7%9A%84Loss%E6%8E%A8%E5%AF%BC/index.html">
 <meta property="og:site_name" content="我的博客">
-<meta property="og:description" content="一个简约上档次的个人博客，分享技术、生活与思考。">
+<meta property="og:description" content="0. DDPM的优化目标 扩散模型的最终目标是学习一个从噪声生成真实数据的分布 pθ(x0)p_\theta(x_0)pθ​(x0​)。最直接的方法是极大似然估计： max⁡θlog⁡pθ(x0)\max_{\theta} \log p_{\theta}(x_0) θmax​logpθ​(x0​) 其中x0x_0x0​表示训练图片，pθp_{\theta}pθ​为参数为θ\thetaθ的模型生成图">
 <meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-06-14T06:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-14T06:10:18.134Z">
 <meta property="article:author" content="康焱">
-<meta property="article:tag" content="博客, 技术, 生活, 思考">
+<meta property="article:tag" content="DDPM">
+<meta property="article:tag" content="扩散模型">
+<meta property="article:tag" content="算法">
 <meta name="twitter:card" content="summary">
 
 
-<link rel="canonical" href="https://yankang18.github.io/">
+<link rel="canonical" href="https://yankang18.github.io/2026/06/14/DDPM%E7%9A%84Loss%E6%8E%A8%E5%AF%BC/">
 
 
-<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":true,"isPost":false,"lang":"zh-CN","comments":"","permalink":"","path":"index.html","title":""}</script>
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://yankang18.github.io/2026/06/14/DDPM%E7%9A%84Loss%E6%8E%A8%E5%AF%BC/","path":"2026/06/14/DDPM的Loss推导/","title":"DDPM的Loss推导详解"}</script>
 
 <script class="next-config" data-name="calendar" type="application/json">""</script>
-<title>我的博客</title>
+<title>DDPM的Loss推导详解 | 我的博客</title>
   
 
 
@@ -103,7 +107,7 @@
 
     <a href="/" class="brand" rel="start">
       <i class="logo-line"></i>
-      <h1 class="site-title">我的博客</h1>
+      <p class="site-title">我的博客</p>
       <i class="logo-line"></i>
     </a>
       <p class="site-subtitle" itemprop="description">简约 · 思考 · 记录</p>
@@ -157,7 +161,7 @@
   
   <aside class="sidebar">
 
-    <div class="sidebar-inner sidebar-overview-active">
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
       <ul class="sidebar-nav">
         <li class="sidebar-nav-toc">
           文章目录
@@ -170,6 +174,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link"><span class="nav-number">1.</span> <span class="nav-text">0. DDPM的优化目标</span></a></li><li class="nav-item nav-level-1"><a class="nav-link"><span class="nav-number">2.</span> <span class="nav-text">1. 从边缘似然到 ELBO</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC-1-%E6%AD%A5%EF%BC%9A%E5%BC%95%E5%85%A5%E5%89%8D%E5%90%91%E8%BF%87%E7%A8%8B%EF%BC%88%E6%9E%84%E9%80%A0%E9%87%8D%E8%A6%81%E6%80%A7%E9%87%87%E6%A0%B7%E6%9D%83%E9%87%8D%EF%BC%89"><span class="nav-number">2.1.</span> <span class="nav-text">第 1 步：引入前向过程（构造重要性采样权重）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC-2-%E6%AD%A5%EF%BC%9A%E7%A7%AF%E5%88%86%E8%BD%AC%E6%9C%9F%E6%9C%9B"><span class="nav-number">2.2.</span> <span class="nav-text">第 2 步：积分转期望</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC-3-%E6%AD%A5%EF%BC%9A%E8%AE%A1%E7%AE%97ELBO"><span class="nav-number">2.3.</span> <span class="nav-text">第 3 步：计算ELBO</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93%EF%BC%9A%E4%BD%BF%E7%94%A8%E7%9A%84%E6%A0%B8%E5%BF%83%E5%AE%9A%E7%90%86"><span class="nav-number">2.4.</span> <span class="nav-text">总结：使用的核心定理</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link"><span class="nav-number">3.</span> <span class="nav-text">2. 从 ELBO 到可解析的KL</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC-1-%E6%AD%A5%EF%BC%9A%E8%81%94%E5%90%88%E5%88%86%E5%B8%83%E7%9A%84%E9%93%BE%E5%BC%8F%E5%88%86%E8%A7%A3"><span class="nav-number">3.1.</span> <span class="nav-text">第 1 步：联合分布的链式分解</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC-2-%E6%AD%A5%EF%BC%9A%E5%88%A9%E7%94%A8%E8%B4%9D%E5%8F%B6%E6%96%AF%E5%AE%9A%E7%90%86%E6%B1%82%E5%BE%97%E5%8E%BB%E5%99%AA%E5%90%8E%E9%AA%8C"><span class="nav-number">3.2.</span> <span class="nav-text">第 2 步：利用贝叶斯定理求得去噪后验</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC-3-%E6%AD%A5%EF%BC%9A%E5%B0%86-ELBO-%E5%88%86%E8%A7%A3%E4%B8%BA-KL-%E6%95%A3%E5%BA%A6%E4%B9%8B%E5%92%8C"><span class="nav-number">3.3.</span> <span class="nav-text">第 3 步：将 ELBO 分解为 KL 散度之和</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link"><span class="nav-number">4.</span> <span class="nav-text">3. 从 KL 散度到噪声预测的MSE</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC-1-%E6%AD%A5%EF%BC%9A%E8%AE%A1%E7%AE%97%E9%AB%98%E6%96%AF%E5%88%86%E5%B8%83%E9%97%B4%E7%9A%84-KL-%E6%95%A3%E5%BA%A6"><span class="nav-number">4.1.</span> <span class="nav-text">第 1 步：计算高斯分布间的 KL 散度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC-2-%E6%AD%A5%EF%BC%9A%E5%99%AA%E5%A3%B0%E5%8F%82%E6%95%B0%E5%8C%96%EF%BC%88Noise-Parameterization%EF%BC%89"><span class="nav-number">4.2.</span> <span class="nav-text">第 2 步：噪声参数化（Noise Parameterization）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC-3-%E6%AD%A5%EF%BC%9A%E7%AE%80%E5%8C%96%E7%9B%AE%E6%A0%87%E5%BE%97%E5%88%B0-MSE-%E6%8D%9F%E5%A4%B1"><span class="nav-number">4.3.</span> <span class="nav-text">第 3 步：简化目标得到 MSE 损失</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%89%E3%80%81%E6%80%BB%E7%BB%93%EF%BC%9A%E6%8E%A8%E5%AF%BC%E9%93%BE%E4%B8%AD%E7%9A%84%E5%85%B3%E9%94%AE%E5%AE%9A%E7%90%86"><span class="nav-number">4.4.</span> <span class="nav-text">三、总结：推导链中的关键定理</span></a></li></ol></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -219,16 +224,17 @@
 
     </div>
 
-    <div class="main-inner index posts-expand">
+    <div class="main-inner post posts-expand">
 
-    
+
+  
 
 
 <div class="post-block">
   
   
 
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
     <link itemprop="mainEntityOfPage" href="https://yankang18.github.io/2026/06/14/DDPM%E7%9A%84Loss%E6%8E%A8%E5%AF%BC/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -242,13 +248,13 @@
     </span>
 
     <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content=" | 我的博客">
+      <meta itemprop="name" content="DDPM的Loss推导详解 | 我的博客">
       <meta itemprop="description" content="">
     </span>
       <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2026/06/14/DDPM%E7%9A%84Loss%E6%8E%A8%E5%AF%BC/" class="post-title-link" itemprop="url">DDPM的Loss推导详解</a>
-        </h2>
+        <h1 class="post-title" itemprop="name headline">
+          DDPM的Loss推导详解
+        </h1>
 
         <div class="post-meta-container">
           <div class="post-meta">
@@ -280,8 +286,7 @@
     
     
     
-    <div class="post-body" itemprop="articleBody">
-          <h1>0. DDPM的优化目标</h1>
+    <div class="post-body" itemprop="articleBody"><h1>0. DDPM的优化目标</h1>
 <p>扩散模型的最终目标是学习一个从噪声生成真实数据的分布 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mi>θ</mi></msub><mo stretchy="false">(</mo><msub><mi>x</mi><mn>0</mn></msub><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">p_\theta(x_0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0278em;">θ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>。最直接的方法是<strong>极大似然估计</strong>：</p>
 <p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><munder><mrow><mi>max</mi><mo>⁡</mo></mrow><mi>θ</mi></munder><mi>log</mi><mo>⁡</mo><msub><mi>p</mi><mi>θ</mi></msub><mo stretchy="false">(</mo><msub><mi>x</mi><mn>0</mn></msub><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">\max_{\theta} \log p_{\theta}(x_0)
 </annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.5021em;vertical-align:-0.7521em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.4306em;"><span style="top:-2.3479em;margin-left:0em;"><span class="pstrut" style="height:3em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0278em;">θ</span></span></span></span><span style="top:-3em;"><span class="pstrut" style="height:3em;"></span><span><span class="mop">max</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.7521em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">lo<span style="margin-right:0.0139em;">g</span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.0278em;">θ</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span></span></p>
@@ -789,7 +794,6 @@ M347 1759 V0 H263 V1759 v0 v1759 h84z"/></svg></span></span></span><span class="
 </annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord text"><span class="mord">Loss</span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">∥</span><span class="mord mathnormal">ϵ</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1.1141em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal">ϵ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0278em;">θ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mclose">)</span><span class="mord"><span class="mord">∥</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span></span></p>
 <p>通过最小化上面的loss，训练<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ϵ</mi><mi>θ</mi></msub><mo stretchy="false">(</mo><msub><mi>x</mi><mi>t</mi></msub><mo separator="true">,</mo><mi>t</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">\epsilon_\theta(x_t, t)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal">ϵ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0278em;">θ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">t</span><span class="mclose">)</span></span></span></span>的过程可以看做是学生模型<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ϵ</mi></mrow><annotation encoding="application/x-tex">\epsilon</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal">ϵ</span></span></span></span>对教师分布 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mo stretchy="false">(</mo><msub><mi>x</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo>∣</mo><msub><mi>x</mi><mi>t</mi></msub><mo separator="true">,</mo><msub><mi>x</mi><mn>0</mn></msub><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">q(x_{t-1} \mid x_t, x_0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">q</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mbin mtight">−</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2083em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∣</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>的拟合 ：教师分布 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mo stretchy="false">(</mo><msub><mi>x</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo>∣</mo><msub><mi>x</mi><mi>t</mi></msub><mo separator="true">,</mo><msub><mi>x</mi><mn>0</mn></msub><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">q(x_{t-1} \mid x_t, x_0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">q</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mbin mtight">−</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2083em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∣</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">0</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span> 是&quot;开卷答案&quot;，推理时不可用；神经网络 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mi>θ</mi></msub><mo stretchy="false">(</mo><msub><mi>x</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo>∣</mo><msub><mi>x</mi><mi>t</mi></msub><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">p_\theta(x_{t-1} \mid x_t)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.0278em;">θ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">t</span><span class="mbin mtight">−</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2083em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∣</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">t</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span> 是&quot;闭卷能力&quot;，通过拟合大量开卷答案学会泛化。</p>
 
-      
     </div>
 
     
@@ -797,766 +801,27 @@ M347 1759 V0 H263 V1759 v0 v1759 h84z"/></svg></span></span></span><span class="
     
 
     <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
+          <div class="post-tags">
+              <a href="/tags/%E6%89%A9%E6%95%A3%E6%A8%A1%E5%9E%8B/" rel="tag"># 扩散模型</a>
+              <a href="/tags/%E7%AE%97%E6%B3%95/" rel="tag"># 算法</a>
+              <a href="/tags/DDPM/" rel="tag"># DDPM</a>
+          </div>
 
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://yankang18.github.io/2026/05/20/mllm_trend_v2/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.png">
-      <meta itemprop="name" content="康焱">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="我的博客">
-      <meta itemprop="description" content="一个简约上档次的个人博客，分享技术、生活与思考。">
-    </span>
-
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content=" | 我的博客">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2026/05/20/mllm_trend_v2/" class="post-title-link" itemprop="url">MLLM技术发展脉络（2020-2025）</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2026-05-20 11:00:00" itemprop="dateCreated datePublished" datetime="2026-05-20T11:00:00+08:00">2026-05-20</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar-check"></i>
-      </span>
-      <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-06-07 20:01:33" itemprop="dateModified" datetime="2026-06-07T20:01:33+08:00">2026-06-07</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-folder"></i>
-      </span>
-      <span class="post-meta-item-text">分类于</span>
-        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/%E5%A4%9A%E6%A8%A1%E6%80%81/" itemprop="url" rel="index"><span itemprop="name">多模态</span></a>
-        </span>
-    </span>
-
-  
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <h2 id="1-引言">1. 引言</h2>
-<p>视觉-语言预训练（Vision-Language Pre-training, VLP）旨在学习视觉与语言两种模态的统一表征，是多模态人工智能领域的核心研究方向。从2017年至2025年，VLP技术经历了三次深刻的范式变革：从依赖外部目标检测器的双流/单流融合架构，到基于Vision Transformer的端到端对比预训练，再到以大语言模型（LLM）为核心的多模态大模型时代。每一次范式的跃迁都带来了表征学习能力的质变，推动VLP模型从特定下游任务的微调适配，逐步走向通用化、多任务化与规模化。</p>
-<p><img src="/2026/05/20/mllm_trend_v2/MLLM_trend.png" alt="MLLM_trend"></p>
-<p><strong>目标检测器驱动的多模态融合时代（2017—2020）。</strong></p>
-<ul>
-<li>早期VLP模型普遍依赖Faster R-CNN等预训练目标检测器提取图像区域特征，再将区域特征与文本表示输入Transformer进行跨模态融合。这一阶段的代表性工作聚焦于探索视觉-语言交互的架构设计：</li>
-<li>ViLBERT提出双流共注意力Transformer架构，语言流与视觉流通过共注意力层实现深层交互；LXMERT进一步拓展为三编码器架构，引入独立的物体关系编码器与跨模态编码器，并设计了五种预训练任务以学习细粒度模态对齐；</li>
-<li>UNITER则转向单流Transformer架构，以条件掩码策略与最优传输词-区域对齐（WRA）提升跨模态对齐精度；OSCAR另辟蹊径，利用对象标签作为语义锚点，通过三元组表示（词元、对象标签、区域特征）将视觉语义显式注入预训练过程。尽管这些模型在视觉问答、图文检索等任务上取得了显著进展，但其对外部检测器的依赖导致推理速度受限，且区域级特征难以捕捉图像的全局语义。</li>
-</ul>
-<p><strong>端到端多模态融合时代（2021—2022）。</strong></p>
-<ul>
-<li>随着Vision Transformer（ViT）的提出，图像被统一表示为序列化的patch嵌入，为VLP的端到端训练奠定了基础。</li>
-<li>CLIP开创性地采用双编码器对比预训练范式，在4亿图文对上学习对齐的视觉-语言表示，实现了强大的零样本分类能力。SigLIP及其后续版本SigLIP 2进一步优化对比学习目标，以Sigmoid损失解耦批次大小与任务定义的依赖，并通过统一训练配方（结合LocCa解码器、自蒸馏、掩码预测与ACID数据）将语言覆盖扩展至109种语言，同时支持可变分辨率处理。</li>
-<li>在架构层面，ViLT完全摒弃CNN和区域监督，首次实现纯Transformer的VLP；ALBEF提出&quot;先对齐后融合&quot;策略，配合动量蒸馏分离对齐层与融合层；VLMO设计多路Transformer（MOME），引入模态专属前馈网络专家实现参数高效的多模态学习；BLIP提出多模态编码器-解码器（MED）架构与CapFilt数据引导机制，有效提升数据质量与生成能力；</li>
-<li>Flamingo开创冻结大语言模型结合门控交叉注意力层的少样本学习范式；CoCa以解耦解码器统一对比学习与生成式描述任务；BEiT-3通过Multiway Transformer实现掩码数据建模的统一框架。</li>
-<li>在规模化与多语言方向，PaLI系列（PaLI、PaLI-X、PaLI-3）系统探索了模型与数据的联合缩放，从17B参数的mT5+ViT-e架构到55B参数的ViT-22B+UL2-32B，再到5B参数的SigLIP对比预训练&quot;小即是美&quot;方案，逐步确立了多语言视觉-语言理解的标杆。</li>
-</ul>
-<p><strong>以LLM为核心的多模态大模型时代（2023—2025）。</strong></p>
-<ul>
-<li>2023年起，VLP研究的重心转向如何将视觉能力高效接入预训练的大语言模型。BLIP-2提出Q-Former作为可学习的桥接模块，在两阶段训练中连接冻结的视觉编码器与冻结的LLM，开启了&quot;冻结LLM + 可学习桥接&quot;的新范式。</li>
-<li>LLaVA则开创了视觉指令微调范式，通过简单的线性投影层将ViT特征映射至LLaMA/Vicuna的嵌入空间，引爆了开源多模态大语言模型（MLLM）的研究热潮。以Qwen-VL为代表的MLLM进入了快速迭代期间。</li>
-<li>Qwen-VL系列展现了清晰的迭代脉络：Qwen-VL采用Q-Former风格适配器与三阶段训练；Qwen2-VL引入动态分辨率ViT、Patch Merger与M-RoPE位置编码；Qwen3-VL进一步升级为SigLIP2视觉编码器、DeepStack特征聚合与交错M-RoPE。</li>
-<li>Llama系列从3.2 Vision的ViT-H/14+门控交叉注意力视觉适配器，演进至Llama 4的MoE架构（17B激活/400B总参数）与早期融合策略。</li>
-<li>DeepSeek-VL系列同样呈现了快速迭代：DeepSeek-VL采用SigLIP-L+SAM-B混合视觉编码器与两层混合MLP适配器，通过模态平衡训练（70% VL + 30%文本）实现视觉-语言能力的协调；DeepSeek-VL2进一步引入动态分块视觉编码（SigLIP-SO400M）、MoE与MLA注意力机制，提供Tiny（3B）、Small（16B）、Base（27B）三规模版本。</li>
-<li>PaliGemma系列则以轻量高效为特色：PaliGemma将SigLIP与Gemma-2B结合实现3B参数的高效模型；Gemma 3支持128K上下文窗口与Pan and Scan视觉处理；PaliGemma 2则升级为SigLIP2+Gemma 2架构，延续了PaLI系列的技术传统。</li>
-</ul>
-<p>本报告系统梳理2017年至2025年间视觉-语言预训练领域的技术演进脉络，重点围绕上述三大范式转变展开：从依赖检测器的特征融合（ViLBERT、LXMERT、UNITER、OSCAR），到端到端的多模态融合（CLIP、BEiT、BLIP、PaLI系列等），再到以大语言模型为核心的多模态大模型时代（BLIP-2、LLaVA、Qwen-VL、DeepSeek-VL、PaliGemma系列等）。报告剖析各阶段代表性模型的架构设计、预训练策略与技术贡献，阐明模型间的技术承接关系与演进逻辑，为希望了解MLLM发展脉络的同学提供技术参考与范式洞察。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2026/05/20/mllm_trend_v2/#more" rel="contents">
-                阅读全文 &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
         
-      
-    </div>
 
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/05/20/mllm_trend_v2/" rel="prev" title="MLLM技术发展脉络（2020-2025）">
+                  <i class="fa fa-angle-left"></i> MLLM技术发展脉络（2020-2025）
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
     </footer>
   </article>
 </div>
 
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://yankang18.github.io/2024/05/12/python-asyncio-guide/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.png">
-      <meta itemprop="name" content="康焱">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="我的博客">
-      <meta itemprop="description" content="一个简约上档次的个人博客，分享技术、生活与思考。">
-    </span>
-
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content=" | 我的博客">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2024/05/12/python-asyncio-guide/" class="post-title-link" itemprop="url">Python asyncio 异步编程入门</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2024-05-12 11:00:00" itemprop="dateCreated datePublished" datetime="2024-05-12T11:00:00+08:00">2024-05-12</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar-check"></i>
-      </span>
-      <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-05-18 23:37:36" itemprop="dateModified" datetime="2026-05-18T23:37:36+08:00">2026-05-18</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-folder"></i>
-      </span>
-      <span class="post-meta-item-text">分类于</span>
-        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index"><span itemprop="name">技术</span></a>
-        </span>
-    </span>
-
-  
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <p>asyncio 是 Python 3.4+ 引入的标准库，用于编写并发代码。本文将带你快速入门 asyncio 的核心概念。</p>
-<h2 id="为什么要用异步？">为什么要用异步？</h2>
-<p>在传统的同步编程中，当程序遇到 I/O 操作（如网络请求、文件读写）时，线程会阻塞等待。而异步编程允许我们在等待 I/O 时去执行其他任务，极大地提高了资源利用率。</p>
-<h2 id="核心概念">核心概念</h2>
-<h3 id="1-coroutine（协程）">1. coroutine（协程）</h3>
-<p>使用 <code>async def</code> 定义的函数就是协程：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> asyncio</span><br><span class="line"></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">say_hello</span>():</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;Hello&quot;</span>)</span><br><span class="line">    <span class="keyword">await</span> asyncio.sleep(<span class="number">1</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;World&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 运行协程</span></span><br><span class="line">asyncio.run(say_hello())</span><br></pre></td></tr></table></figure>
-<h3 id="2-await-关键字">2. await 关键字</h3>
-<p><code>await</code> 用于等待一个可等待对象（协程、任务、Future）完成。注意：<code>await</code> 只能在 <code>async def</code> 函数中使用。</p>
-<h3 id="3-Task（任务）">3. Task（任务）</h3>
-<p>任务用于并发调度协程：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">main</span>():</span><br><span class="line">    task1 = asyncio.create_task(fetch_data(<span class="string">&quot;url1&quot;</span>))</span><br><span class="line">    task2 = asyncio.create_task(fetch_data(<span class="string">&quot;url2&quot;</span>))</span><br><span class="line">    </span><br><span class="line">    result1 = <span class="keyword">await</span> task1</span><br><span class="line">    result2 = <span class="keyword">await</span> task2</span><br><span class="line">    </span><br><span class="line">    <span class="built_in">print</span>(result1, result2)</span><br></pre></td></tr></table></figure>
-<h3 id="4-gather-并发执行">4. gather 并发执行</h3>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">main</span>():</span><br><span class="line">    results = <span class="keyword">await</span> asyncio.gather(</span><br><span class="line">        fetch_data(<span class="string">&quot;url1&quot;</span>),</span><br><span class="line">        fetch_data(<span class="string">&quot;url2&quot;</span>),</span><br><span class="line">        fetch_data(<span class="string">&quot;url3&quot;</span>),</span><br><span class="line">    )</span><br><span class="line">    <span class="built_in">print</span>(results)</span><br></pre></td></tr></table></figure>
-<h2 id="实战示例：并发爬虫">实战示例：并发爬虫</h2>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> asyncio</span><br><span class="line"><span class="keyword">import</span> aiohttp</span><br><span class="line"></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">fetch</span>(<span class="params">session, url</span>):</span><br><span class="line">    <span class="keyword">async</span> <span class="keyword">with</span> session.get(url) <span class="keyword">as</span> response:</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">await</span> response.text()</span><br><span class="line"></span><br><span class="line"><span class="keyword">async</span> <span class="keyword">def</span> <span class="title function_">main</span>():</span><br><span class="line">    urls = [</span><br><span class="line">        <span class="string">&quot;https://api.github.com&quot;</span>,</span><br><span class="line">        <span class="string">&quot;https://api.github.com/users/python&quot;</span>,</span><br><span class="line">        <span class="string">&quot;https://api.github.com/users/google&quot;</span>,</span><br><span class="line">    ]</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">async</span> <span class="keyword">with</span> aiohttp.ClientSession() <span class="keyword">as</span> session:</span><br><span class="line">        tasks = [fetch(session, url) <span class="keyword">for</span> url <span class="keyword">in</span> urls]</span><br><span class="line">        results = <span class="keyword">await</span> asyncio.gather(*tasks)</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">for</span> url, result <span class="keyword">in</span> <span class="built_in">zip</span>(urls, results):</span><br><span class="line">            <span class="built_in">print</span>(<span class="string">f&quot;<span class="subst">&#123;url&#125;</span>: <span class="subst">&#123;<span class="built_in">len</span>(result)&#125;</span> bytes&quot;</span>)</span><br><span class="line"></span><br><span class="line">asyncio.run(main())</span><br></pre></td></tr></table></figure>
-<h2 id="注意事项">注意事项</h2>
-<ol>
-<li><strong>不要在协程中使用阻塞操作</strong>：如 <code>time.sleep()</code>，应使用 <code>asyncio.sleep()</code></li>
-<li><strong>事件循环</strong>：<code>asyncio.run()</code> 会自动管理事件循环，高级用法可手动控制</li>
-<li><strong>异常处理</strong>：使用 <code>try/except</code> 包裹 <code>await</code> 语句</li>
-</ol>
-<h2 id="总结">总结</h2>
-<p>asyncio 让 Python 也能高效处理 I/O 密集型任务。虽然学习曲线略陡，但掌握后能够编写出高性能的并发程序。</p>
-<p>推荐阅读 <a target="_blank" rel="noopener" href="https://docs.python.org/3/library/asyncio.html">官方文档</a> 深入学习。</p>
-
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://yankang18.github.io/2024/04/05/travel-kyoto-autumn/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.png">
-      <meta itemprop="name" content="康焱">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="我的博客">
-      <meta itemprop="description" content="一个简约上档次的个人博客，分享技术、生活与思考。">
-    </span>
-
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content=" | 我的博客">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2024/04/05/travel-kyoto-autumn/" class="post-title-link" itemprop="url">京都秋日游记</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2024-04-05 16:30:00" itemprop="dateCreated datePublished" datetime="2024-04-05T16:30:00+08:00">2024-04-05</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar-check"></i>
-      </span>
-      <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-05-18 23:37:12" itemprop="dateModified" datetime="2026-05-18T23:37:12+08:00">2026-05-18</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-folder"></i>
-      </span>
-      <span class="post-meta-item-text">分类于</span>
-        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/%E7%94%9F%E6%B4%BB/" itemprop="url" rel="index"><span itemprop="name">生活</span></a>
-        </span>
-    </span>
-
-  
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <p>十一月的京都，是红叶的季节。这座千年古都，在秋色的映衬下更显静谧与优雅。</p>
-<h2 id="行程概览">行程概览</h2>
-<ul>
-<li><strong>时间</strong>：2023 年 11 月中旬</li>
-<li><strong>天数</strong>：5 天 4 夜</li>
-<li><strong>交通</strong>：关西机场进出，京都市内以公交和步行为主</li>
-</ul>
-<h2 id="必去景点">必去景点</h2>
-<h3 id="清水寺">清水寺</h3>
-<p>清晨六点到达清水寺，避开了人潮。站在清水舞台上俯瞰京都，晨雾中的城市仿佛一幅水墨画。</p>
-<p><img src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800" alt="清水寺"></p>
-<h3 id="岚山">岚山</h3>
-<p>岚山的竹林小径虽然游客众多，但当你抬头仰望高耸入云的竹林时，依然会被那种静谧的力量所震撼。</p>
-<h3 id="琉璃光院">琉璃光院</h3>
-<p>这里是京都赏枫的终极目的地。虽然需要提前预约，但当你坐在二楼的窗前，看着满院红叶倒映在漆黑桌面上时，一切都值得。</p>
-<h2 id="美食推荐">美食推荐</h2>
-<table>
-<thead>
-<tr>
-<th>餐厅</th>
-<th>类型</th>
-<th>推荐菜品</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>菊乃井</td>
-<td>怀石料理</td>
-<td>秋季限定套餐</td>
-</tr>
-<tr>
-<td>中村藤吉</td>
-<td>抹茶甜品</td>
-<td>抹茶帕菲</td>
-</tr>
-<tr>
-<td>名代猪排</td>
-<td>炸物</td>
-<td>特选里肌猪排</td>
-</tr>
-</tbody>
-</table>
-<h2 id="旅行感悟">旅行感悟</h2>
-<p>京都是一座适合慢下来的城市。不需要赶景点，在巷弄间随意走走，在寺庙的台阶上静坐片刻，在茶室里喝一杯抹茶，就是最好的旅行体验。</p>
-<p>期待下一个季节的京都。</p>
-
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://yankang18.github.io/2024/03/15/hexo-blog-setup-guide/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.png">
-      <meta itemprop="name" content="康焱">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="我的博客">
-      <meta itemprop="description" content="一个简约上档次的个人博客，分享技术、生活与思考。">
-    </span>
-
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content=" | 我的博客">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2024/03/15/hexo-blog-setup-guide/" class="post-title-link" itemprop="url">如何使用 Hexo 搭建个人博客</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2024-03-15 10:30:00" itemprop="dateCreated datePublished" datetime="2024-03-15T10:30:00+08:00">2024-03-15</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar-check"></i>
-      </span>
-      <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-05-18 23:36:29" itemprop="dateModified" datetime="2026-05-18T23:36:29+08:00">2026-05-18</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-folder"></i>
-      </span>
-      <span class="post-meta-item-text">分类于</span>
-        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/%E6%8A%80%E6%9C%AF/" itemprop="url" rel="index"><span itemprop="name">技术</span></a>
-        </span>
-    </span>
-
-  
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <p>Hexo 是一个快速、简洁且高效的博客框架。本文将介绍如何使用 Hexo 搭建一个精美的个人博客。</p>
-<h2 id="为什么选择-Hexo？">为什么选择 Hexo？</h2>
-<ul>
-<li><strong>极速生成</strong>：基于 Node.js，数百篇文章可在数秒内生成</li>
-<li><strong>Markdown 支持</strong>：使用 Markdown 编写文章，专注内容本身</li>
-<li><strong>主题丰富</strong>：拥有大量精美的开源主题</li>
-<li><strong>一键部署</strong>：支持 GitHub Pages、Vercel 等多种平台</li>
-</ul>
-<h2 id="快速开始">快速开始</h2>
-<h3 id="1-安装-Hexo">1. 安装 Hexo</h3>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm install -g hexo-cli</span><br></pre></td></tr></table></figure>
-<h3 id="2-初始化博客">2. 初始化博客</h3>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">hexo init myblog</span><br><span class="line"><span class="built_in">cd</span> myblog</span><br><span class="line">npm install</span><br></pre></td></tr></table></figure>
-<h3 id="3-本地预览">3. 本地预览</h3>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo server</span><br></pre></td></tr></table></figure>
-<h3 id="4-新建文章">4. 新建文章</h3>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo new <span class="string">&quot;我的文章标题&quot;</span></span><br></pre></td></tr></table></figure>
-<h2 id="目录结构">目录结构</h2>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">myblog/</span><br><span class="line">├── _config.yml          # 站点配置文件</span><br><span class="line">├── package.json         # 依赖包</span><br><span class="line">├── scaffolds/           # 文章模板</span><br><span class="line">├── source/              # 用户资源文件</span><br><span class="line">│   ├── _posts/          # 博客文章</span><br><span class="line">│   └── about/           # 自定义页面</span><br><span class="line">└── themes/              # 主题文件夹</span><br></pre></td></tr></table></figure>
-<h2 id="进阶配置">进阶配置</h2>
-<p>你可以通过修改 <code>_config.yml</code> 来自定义站点信息、主题、插件等。更多配置请参考 <a target="_blank" rel="noopener" href="https://hexo.io/docs/">Hexo 官方文档</a>。</p>
-<h2 id="总结">总结</h2>
-<p>Hexo 让搭建博客变得异常简单。只需几步，你就能拥有一个属于自己的博客空间，开始记录和分享。</p>
-
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://yankang18.github.io/2024/02/20/minimalist-design-principles/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.png">
-      <meta itemprop="name" content="康焱">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="我的博客">
-      <meta itemprop="description" content="一个简约上档次的个人博客，分享技术、生活与思考。">
-    </span>
-
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content=" | 我的博客">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2024/02/20/minimalist-design-principles/" class="post-title-link" itemprop="url">简约设计的基本原则</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2024-02-20 14:00:00" itemprop="dateCreated datePublished" datetime="2024-02-20T14:00:00+08:00">2024-02-20</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar-check"></i>
-      </span>
-      <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-05-18 23:36:44" itemprop="dateModified" datetime="2026-05-18T23:36:44+08:00">2026-05-18</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-folder"></i>
-      </span>
-      <span class="post-meta-item-text">分类于</span>
-        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/%E8%AE%BE%E8%AE%A1/" itemprop="url" rel="index"><span itemprop="name">设计</span></a>
-        </span>
-    </span>
-
-  
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <p>简约设计（Minimalist Design）是一种追求极致简洁的设计风格。它不是简单地减少元素，而是提炼精华，让核心内容更加突出。</p>
-<h2 id="核心理念">核心理念</h2>
-<blockquote>
-<p>“少即是多” —— 路德维希·密斯·凡德罗</p>
-</blockquote>
-<p>简约设计的本质是通过去除多余的装饰，让用户能够专注于最重要的内容和功能。</p>
-<h2 id="四大原则">四大原则</h2>
-<h3 id="1-留白（Whitespace）">1. 留白（Whitespace）</h3>
-<p>留白不是空白，而是一种主动的设计元素。适当的留白可以：</p>
-<ul>
-<li>让页面呼吸，减轻视觉压力</li>
-<li>引导用户视线，突出重点内容</li>
-<li>营造高端、优雅的氛围</li>
-</ul>
-<h3 id="2-色彩克制">2. 色彩克制</h3>
-<p>简约设计通常采用有限的色彩：</p>
-<table>
-<thead>
-<tr>
-<th>类型</th>
-<th>用途</th>
-<th>示例</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>主色</td>
-<td>品牌识别</td>
-<td>#1565c0</td>
-</tr>
-<tr>
-<td>辅助色</td>
-<td>功能区分</td>
-<td>#757575</td>
-</tr>
-<tr>
-<td>背景色</td>
-<td>页面基底</td>
-<td>#ffffff</td>
-</tr>
-<tr>
-<td>强调色</td>
-<td>重点突出</td>
-<td>#ff4081</td>
-</tr>
-</tbody>
-</table>
-<h3 id="3-排版清晰">3. 排版清晰</h3>
-<ul>
-<li>选择 1-2 种字体家族</li>
-<li>建立清晰的字号层级</li>
-<li>保持足够的行高和字间距</li>
-</ul>
-<h3 id="4-功能优先">4. 功能优先</h3>
-<p>每一个元素都应该有其存在的理由。问自己：</p>
-<ul>
-<li>这个元素是否帮助用户理解内容？</li>
-<li>去掉它会影响用户体验吗？</li>
-<li>是否有更简洁的表达方式？</li>
-</ul>
-<h2 id="实践建议">实践建议</h2>
-<ol>
-<li><strong>先加法，后减法</strong>：先列出所有需要的内容，再逐步精简</li>
-<li><strong>以内容为中心</strong>：设计服务于内容，而非相反</li>
-<li><strong>保持一致性</strong>：统一的设计语言能降低认知负担</li>
-<li><strong>注重细节</strong>：简约设计中，每一个细节都会被放大审视</li>
-</ol>
-<h2 id="结语">结语</h2>
-<p>简约设计是一种态度，是对用户时间和注意力的尊重。当我们学会做减法，设计的力量反而会更加强大。</p>
-
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://yankang18.github.io/2024/01/10/reading-notes-atomic-habits/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.png">
-      <meta itemprop="name" content="康焱">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="我的博客">
-      <meta itemprop="description" content="一个简约上档次的个人博客，分享技术、生活与思考。">
-    </span>
-
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content=" | 我的博客">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2024/01/10/reading-notes-atomic-habits/" class="post-title-link" itemprop="url">《原子习惯》读书笔记</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2024-01-10 09:00:00" itemprop="dateCreated datePublished" datetime="2024-01-10T09:00:00+08:00">2024-01-10</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar-check"></i>
-      </span>
-      <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-05-18 23:36:58" itemprop="dateModified" datetime="2026-05-18T23:36:58+08:00">2026-05-18</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-folder"></i>
-      </span>
-      <span class="post-meta-item-text">分类于</span>
-        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/%E9%98%85%E8%AF%BB/" itemprop="url" rel="index"><span itemprop="name">阅读</span></a>
-        </span>
-    </span>
-
-  
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <p>詹姆斯·克利尔的《原子习惯》是一本关于习惯养成的经典之作。书中提出了许多实用的方法论，帮助我们建立好习惯、戒除坏习惯。</p>
-<h2 id="核心观点">核心观点</h2>
-<h3 id="1-的复利效应">1% 的复利效应</h3>
-<p>每天进步 1%，一年后你会进步 37 倍；每天退步 1%，一年后你会几乎归零。</p>
-<blockquote>
-<p>习惯是自我提高的复利。</p>
-</blockquote>
-<h3 id="习惯养成的四个定律">习惯养成的四个定律</h3>
-<table>
-<thead>
-<tr>
-<th>阶段</th>
-<th>定律</th>
-<th>方法</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>提示</td>
-<td>让它显而易见</td>
-<td>环境设计、习惯叠加</td>
-</tr>
-<tr>
-<td>渴望</td>
-<td>让它有吸引力</td>
-<td>喜好绑定、群体归属</td>
-</tr>
-<tr>
-<td>反应</td>
-<td>让它简便易行</td>
-<td>减少阻力、两分钟规则</td>
-</tr>
-<tr>
-<td>奖励</td>
-<td>让它令人愉悦</td>
-<td>即时奖励、习惯追踪</td>
-</tr>
-</tbody>
-</table>
-<h2 id="我的实践">我的实践</h2>
-<p>读完这本书后，我尝试了以下几个方法：</p>
-<ol>
-<li><strong>习惯叠加</strong>：在现有习惯后添加新习惯，比如&quot;早晨泡咖啡后，冥想 5 分钟&quot;</li>
-<li><strong>环境设计</strong>：把运动服放在床头，降低运动的启动成本</li>
-<li><strong>两分钟规则</strong>：任何习惯都可以在两分钟内开始，先建立动作，再优化时长</li>
-</ol>
-<h2 id="经典语录">经典语录</h2>
-<ul>
-<li>“你不需要提升目标，你只需要降低标准。”</li>
-<li>“身份转变是最强大的改变方式。不是我想戒烟，而是我不抽烟。”</li>
-<li>“成功的最大威胁不是失败，而是无聊。”</li>
-</ul>
-<h2 id="总结">总结</h2>
-<p>《原子习惯》给我的最大启发是：<strong>关注系统，而非目标</strong>。当你建立了正确的日常系统，想要的结果自然会随之而来。</p>
-<p>强烈推荐给每一个想要自我提升的朋友阅读。</p>
-
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
 
 
 
