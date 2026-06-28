@@ -184,7 +184,7 @@
   <nav class="site-state">
       <div class="site-state-item site-state-posts">
         <a href="/archives/">
-          <span class="site-state-item-count">7</span>
+          <span class="site-state-item-count">8</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
@@ -340,6 +340,470 @@
             </div>
           <!--/noindex-->
         
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+    <link itemprop="mainEntityOfPage" href="https://yankang18.github.io/2026/06/12/llm_architecture/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.png">
+      <meta itemprop="name" content="康焱">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="我的博客">
+      <meta itemprop="description" content="一个简约上档次的个人博客，分享技术、生活与思考。">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content=" | 我的博客">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/2026/06/12/llm_architecture/" class="post-title-link" itemprop="url">未命名</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-06-12 19:25:54" itemprop="dateCreated datePublished" datetime="2026-06-12T19:25:54+08:00">2026-06-12</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-06-28 16:13:26" itemprop="dateModified" datetime="2026-06-28T16:13:26+08:00">2026-06-28</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <h1>大模型三种架构详解：Encoder、Decoder、Encoder-Decoder</h1>
+<p>大语言模型的三种核心架构——<strong>Encoder（仅编码器）</strong>、<strong>Decoder（仅解码器）</strong> 和 <strong>Encoder-Decoder（编码器-解码器）</strong>——分别适用于不同类型的任务。它们的区别根植于注意力机制（Attention）的工作方式：<strong>Encoder使用双向注意力同时理解整个输入序列的上下文；Decoder使用因果（单向）注意力自回归地生成序列；Encoder-Decoder则结合两者，先用Encoder理解输入，再用Decoder生成输出。因此，Encoder-only架构最擅长文本理解（如分类、抽取），Decoder-only架构最擅长开放式文本生成（如对话、创作），而Encoder-Decoder架构则在序列转换任务（如翻译、摘要）中表现最优。</strong></p>
+<hr>
+<p>图1是了大语言模型演化树，展示了从2018年到2023年各类大模型按架构类型的分类演进，包括Encoder-Only（如BERT）、Decoder-Only（如GPT系列）和Encoder-Decoder（如T5、BART）三大分支，并重点展示了一些最知名的模型。位于同一分支上的模型具有更紧密的关联。仅解码器模型位于蓝色分支，仅编码器模型位于粉色分支，编码器-解码器模型位于绿色分支。模型在时间轴上的垂直位置代表其发布日期。开源模型以实心方块表示，闭源模型则以空心方块表示。右下角的堆叠条形图展示了各公司和机构发布的模型数量。</p>
+<p><img src="/2026/06/12/llm_architecture/llm_evolution_tree.png" alt="大语言模型演化树，展示了从2018年到2023年各类大模型按架构类型的分类演进，包括Encoder-Only（如BERT）、Decoder-Only（如GPT系列）和Encoder-Decoder（如T5、BART）三大分支"></p>
+<blockquote>
+<p>图1：大语言模型演化树（图片来源：<a target="_blank" rel="noopener" href="https://arxiv.org/abs/2304.13712">Harnessing the Power of LLMs in Practice: A Survey on ChatGPT and Beyond</a>）</p>
+</blockquote>
+<p>原始 Transformer 论文主要聚焦于机器翻译任务，例如将英语翻译成德语，或将英语翻译成法语。</p>
+<blockquote>
+<p>论文的核心思想简单却有力：对于序列任务，我们并非总是需要循环（Recurrence）或卷积（Convolution）。注意力机制（Attention）足以承担主要工作。</p>
+</blockquote>
+<p>这使得模型训练速度更快、并行化能力更强，并且更擅长学习远距离词语之间的关系。</p>
+<p>原始 Transformer 采用了<strong>编码器-解码器架构（Encoder-Decoder Architecture）</strong>。</p>
+<ul>
+<li><strong>编码器（Encoder）</strong>：理解输入句子。</li>
+<li><strong>解码器（Decoder）</strong>：生成输出句子。</li>
+</ul>
+<p>编码器理解这句英文，解码器则生成对应的德文翻译。 Transformer模型的架构图2所示。</p>
+<p><img src="/2026/06/12/llm_architecture/simple_transformer_architecture.png" alt="simple_transformer_architecture"></p>
+<blockquote>
+<p>图2：Transformer架构示意图（图片来源：<a target="_blank" rel="noopener" href="https://sid-sharma1990.medium.com/transformer-architecture-starting-of-modern-ai-2d10e81b3729">“Transformer Architecture: Starting of Modern AI”</a>）</p>
+</blockquote>
+<p><strong>Transformer 架构简单流程</strong>：输入文本 → 分词（Tokenization）→ 嵌入（Embedding）→ 位置编码（Positional Encoding）→ 编码器（Encoder）→ 解码器（Decoder）→ 线性层（Linear Layer）→ Softmax → 输出文本</p>
+<p><img src="/2026/06/12/llm_architecture/transformer_pipeline.png" alt="transformer_pipeline"></p>
+<blockquote>
+<p>图2：Transformer流程示意图（图片来源：<a target="_blank" rel="noopener" href="https://sid-sharma1990.medium.com/transformer-architecture-starting-of-modern-ai-2d10e81b3729">“Transformer Architecture: Starting of Modern AI”</a>）</p>
+</blockquote>
+<p><strong>分词（Tokenization）</strong>：大语言模型将文本拆解为更小的单元（整词、子词、数字或符号），以便进行处理。</p>
+<p><strong>嵌入（Embedding）</strong>：分词后的单元被转换为数值形式，使机器能够理解词与词之间的关系（例如，将 “king” 与 “queen” 关联起来）。</p>
+<p><strong>位置编码（Positional Encoding）</strong>：由于 Transformer 是并行处理文本，而非逐个处理，因此它使用位置编码来理解 token 的顺序。例如，“Dog bites man” 和 “Man bites dog” 使用了相同的单词，但顺序不同，含义也随之改变。</p>
+<p><strong>编码器（理解输入）</strong>：编码器通过结合整句的上下文来理解每个 token，从而理解输入文本。在原始 Transformer 中，编码器包含 6 层，使用了自注意力（Self-Attention）、前馈网络（Feed-Forward Networks）、残差连接（Residual Connections）和层归一化（Layer Normalization）。例如，在句子 “The bank is near the river” 中，编码器能够判断出 “bank” 指的是河岸（riverside），而非金融机构。</p>
+<p><strong>解码器（生成输出）</strong>：解码器逐步生成输出文本。它使用<strong>掩码自注意力（Masked Self-Attention）</strong>，确保在预测当前词时无法看到未来的词。例如，在生成 “I love machine learning” 时，它在预测 “love” 时无法看到后面的 “machine learning”。</p>
+<p>随着时间的推移，Transformer 架构逐渐演变为三大主要类型：Encoder-Only, Encoder-Decoder, Decoder-Only。</p>
+<h2 id="1-Encoder-Only（仅编码器）架构">1. Encoder-Only（仅编码器）架构</h2>
+<p>编码器就像一个<strong>读者</strong>。它的任务是读取输入，并正确地理解它。它不专注于生成长篇回答，而是更关注<strong>语义</strong>、<strong>上下文</strong>以及<strong>词与词之间的关系</strong>。</p>
+<blockquote>
+<p>简单概括：<strong>编码器 = 读取完整文本并理解上下文</strong>。</p>
+</blockquote>
+<p><img src="/2026/06/12/llm_architecture/encoder_architecture.png" alt="encoder_architecture"></p>
+<blockquote>
+<p>图3：Encoder架构示意图（图片来源：<a target="_blank" rel="noopener" href="https://sid-sharma1990.medium.com/everything-about-encoder-and-decoder-models-in-generative-ai-e4c00fef8b6a">“Everything about Encoder and Decoder Models”</a>）</p>
+</blockquote>
+<h3 id="1-1-核心原理">1.1 核心原理</h3>
+<h4 id="1-1-1-双向自注意力机制（Bidirectional-Self-Attention）">1.1.1 双向自注意力机制（Bidirectional Self-Attention）</h4>
+<p>Encoder-only架构的核心特征在于其采用了<strong>双向自注意力机制（Bidirectional Self-Attention）</strong>，这使得模型在处理序列中的每个token时，都能够同时考虑到该token左右两侧的完整上下文信息。这种机制与Decoder-only架构中的因果（causal）或单向注意力形成鲜明对比，后者在预测某个位置时只能依赖于该位置之前的token。</p>
+<p>具体来说，在计算注意力分数时，Encoder会为输入序列中的每一个token生成<strong>查询（Query）、键（Key）和值（Value）<strong>三个向量。对于任何一个token的Query，它会与序列中所有其他token的Key进行点积运算，从而得到一个注意力权重矩阵。这个权重矩阵反映了序列中任意两个token之间的相关性强度。由于这个过程不涉及对未来信息的屏蔽，模型能够为每个token构建一个</strong>富含全局上下文信息的表示（contextualized representation）</strong> 。这种双向性赋予了Encoder-only模型卓越的语言理解能力，使其能够精确地捕捉词语间的复杂依赖关系、语义关联以及句法结构，为各类需要深度理解输入文本的任务奠定了坚实的基础。</p>
+<p>这种双向处理方式的数学本质是<strong>自注意力机制中的掩码（Mask）矩阵被设置为一个全零矩阵（或全1矩阵，取决于具体实现）</strong>，允许序列中的每个位置都能“看到”其他所有位置。因此，当模型需要判断一个词的情感极性、识别一个命名实体或者理解两个句子之间的逻辑关系时，能够同时利用该词前后文的Encoder架构往往能提供更丰富、更准确的特征表示。例如，在句子“今天天气真好，我的心情也变得____”中，Encoder在预测空白处的词时，可以同时考虑“天气好”这个原因和“心情”这个结果，从而更准确地选择如“愉悦”或“舒畅”等词汇。这种全面的上下文感知能力是Encoder-only模型在语言理解任务上表现出色的根本原因。</p>
+<h4 id="1-1-2-掩码语言模型（Masked-Language-Model-MLM）预训练目标">1.1.2 掩码语言模型（Masked Language Model, MLM）预训练目标</h4>
+<p>为了充分利用其双向架构的优势，Encoder-only模型通常采用<strong>掩码语言模型（Masked Language Model, MLM）<strong>作为其核心预训练目标。在MLM预训练阶段，模型会随机选择输入序列中的一部分token（通常是</strong>15%</strong>），并将它们替换为一个特殊的<code>[MASK]</code>标记，或者保持原样，或者替换为一个随机的token。然后，模型的任务是根据上下文（即未被掩码的token）来预测这些被掩码的原始token。这个过程迫使模型深入学习token之间的双向依赖关系。例如，在句子“BERT是一个[MASK]的语言模型”中，模型必须同时分析“BERT”、“是”、“一个”、“的”、“语言”、“模型”等词，才能准确地预测出被掩码的词是“优秀”或“强大”。通过在海量无标注文本上进行这种自监督学习，模型能够习得丰富的语言知识，包括词汇语义、句法结构和世界知识，形成强大的上下文感知表示能力。</p>
+<p>MLM的训练方式与Decoder-only模型的自回归（autoregressive）训练有着本质的不同。自回归模型是<strong>从左到右（或从右到左）依次预测下一个token</strong>，其训练目标简化为条件概率的连乘积，即:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>P</mi><mo stretchy="false">(</mo><msub><mi>w</mi><mn>1</mn></msub><mo separator="true">,</mo><msub><mi>w</mi><mn>2</mn></msub><mo separator="true">,</mo><mi mathvariant="normal">.</mi><mi mathvariant="normal">.</mi><mi mathvariant="normal">.</mi><mi mathvariant="normal">.</mi><msub><mi>w</mi><mi>x</mi></msub><mo stretchy="false">)</mo><mo>=</mo><mi>P</mi><mo stretchy="false">(</mo><msub><mi>w</mi><mn>1</mn></msub><mo stretchy="false">)</mo><mi>P</mi><mo stretchy="false">(</mo><msub><mi>w</mi><mn>2</mn></msub><mi mathvariant="normal">∣</mi><msub><mi>w</mi><mn>1</mn></msub><mo stretchy="false">)</mo><mi mathvariant="normal">.</mi><mi mathvariant="normal">.</mi><mi mathvariant="normal">.</mi><mi>P</mi><mo stretchy="false">(</mo><msub><mi>w</mi><mi>x</mi></msub><mi mathvariant="normal">∣</mi><msub><mi>w</mi><mn>1</mn></msub><mi mathvariant="normal">.</mi><mi mathvariant="normal">.</mi><mi mathvariant="normal">.</mi><msub><mi>w</mi><mrow><mi>x</mi><mo>−</mo><mn>1</mn></mrow></msub><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">P(w_1, w_2, .... w_x )= P(w_1)P(w_2|w_1)...P(w_x|w_1 ... w_{x-1}) 
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">....</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">x</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">∣</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mord">...</span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">x</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">∣</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">...</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">x</span><span class="mbin mtight">−</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2083em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span></span></p>
+<p>而MLM则是一种<strong>去噪自编码器（denoising autoencoder）<strong>的形式，其目标是重构被“噪声”（即掩码）破坏的输入。这种训练方式使得Encoder-only模型能够生成</strong>深层的双向表示</strong>，这些表示可以直接用于下游任务，或者通过添加一个简单的输出层（如分类层）进行微调（fine-tuning）。除了MLM，一些早期的Encoder-only模型（如BERT）还会结合**下一句预测（Next Sentence Prediction, NSP）**任务进行联合预训练，即判断两个句子是否在原文中相邻，以增强模型对句子间关系的理解能力，尽管后续研究表明NSP并非总是必要的。</p>
+<h4 id="1-1-3-模型结构特点：无解码器部分">1.1.3 模型结构特点：无解码器部分</h4>
+<p>Encoder-only架构，顾名思义，<strong>仅使用了Transformer架构中的编码器（Encoder）部分，而完全舍弃了解码器（Decoder）部分</strong> 。一个典型的Encoder-only模型（如BERT）由多个堆叠的Transformer Encoder层组成。每一层Encoder又包含两个主要子层：一个<strong>多头自注意力（Multi-Head Self-Attention）机制</strong>和一个<strong>全连接前馈网络（Position-wise Feed-Forward Network）</strong>。输入文本首先被转换为token嵌入，并加上位置编码（Positional Encoding）以注入序列顺序信息，然后被送入这个堆叠的Encoder结构中。在经过所有层的处理后，模型会为输入序列中的每个token输出一个高维的上下文嵌入向量（contextual embedding）。这些向量是模型对输入文本深层理解的体现，可以被用于各种下游任务。</p>
+<p>由于缺乏Decoder部分，Encoder-only模型<strong>不具备自回归生成文本的能力</strong>。它们不能直接用于生成一个完整的输出序列，例如翻译或撰写文章。相反，它们的输出通常被用作一个**“表示学习器”（representation learner）<strong>或</strong>“特征提取器”（feature extractor）**。例如，在文本分类任务中，可以取输入序列开头的特殊<code>[CLS]</code> token的最终隐藏状态，并将其输入到一个简单的分类层中，以预测文本的类别。在命名实体识别（NER）任务中，则可以使用每个token对应的输出嵌入向量来独立地预测其标签。这种结构上的简洁性使得Encoder-only模型在设计上专注于“理解”输入，而不是“生成”输出，从而在处理各类语言理解任务时表现出高效和强大的性能。</p>
+<h3 id="1-2-适用任务与原因">1.2 适用任务与原因</h3>
+<h4 id="1-2-1-自然语言理解（NLU）任务">1.2.1 自然语言理解（NLU）任务</h4>
+<p>Encoder-only架构的核心优势在于其对输入文本的<strong>深度双向理解能力</strong>，这使得它成为各类自然语言理解（Natural Language Understanding, NLU）任务的理想选择。NLU任务的本质要求模型能够准确地解析和把握文本的含义、结构和关系，而不是生成新的文本。Encoder-only模型通过其双向自注意力机制和以MLM为核心的预训练方式，能够为输入序列中的每个token生成富含上下文信息的表示。这种表示能力直接对应了NLU任务的需求。无论是判断一段文字的情感倾向，还是识别文本中的特定实体，亦或是分析句子间的逻辑关联，<strong>模型都需要对文本有一个全面的、非局部的理解</strong>。Encoder-only架构通过在预训练阶段就强制模型进行这种双向语境重构，使其在微调阶段能够迅速适应并高效解决各种NLU挑战。</p>
+<p>具体来说，Encoder-only模型在NLU任务中的成功可以归因于以下几点：首先，<strong>双向上下文建模</strong>使其能够消除词语歧义。例如，在“bank”这个词出现在“river bank”和“bank account”中时，双向注意力可以根据左右不同的上下文准确地赋予其不同的语义表示。其次，<strong>深层表示能力</strong>使其能够捕捉复杂的句法结构和长距离依赖关系。例如，在主语和谓语之间被多个从句隔开的情况下，模型依然能够通过注意力机制建立起它们之间的联系。最后，<strong>预训练-微调的范式</strong>使其具有很强的泛化能力。通过在大量通用语料上进行预训练，模型已经掌握了丰富的语言知识，在面对特定领域的下游任务时，只需在相对较少的标注数据上进行微调，就能取得优异的性能。这种高效性和有效性使得Encoder-only模型在NLU领域得到了广泛应用和深入研究。</p>
+<h4 id="1-2-2-文本分类（情感分析、主题分类）">1.2.2 文本分类（情感分析、主题分类）</h4>
+<p>文本分类是Encoder-only模型最擅长和最广泛应用的任务之一，包括情感分析、主题分类、垃圾邮件检测等。在这些任务中，模型的目标是<strong>将整个输入文本分配到一个或多个预定义的类别中</strong>。Encoder-only模型处理这类任务的方式非常高效。通常，在输入序列的开头会添加一个特殊的分类token（如BERT中的<code>[CLS]</code>）。这个token的最终隐藏层状态（即经过所有Encoder层处理后的向量表示）被模型视为对整个输入序列的“汇总”或“聚合”表示。然后，这个<code>[CLS]</code>向量会被送入一个附加的、通常是简单的分类头（例如一个全连接层和一个Softmax激活函数），以产生最终的类别概率分布。</p>
+<p>这种方法之所以有效，是因为<strong>双向自注意力机制使得<code>[CLS]</code> token的表示能够有效地编码整个输入序列的上下文信息</strong>。在注意力计算过程中，<code>[CLS]</code> token的Query会与序列中所有其他token的Key进行交互，从而“关注”到对分类任务最重要的部分。例如，在情感分析任务中，<code>[CLS]</code> token的表示会更多地吸收“好”、“棒”、“喜欢”等积极词汇或“差”、“糟糕”、“讨厌”等消极词汇的信息，从而帮助模型做出正确的情感极性判断。同样，在主题分类中，<code>[CLS]</code>表示会捕捉到与特定主题高度相关的关键词和短语。由于整个模型的所有参数（包括<code>[CLS]</code>的嵌入）在预训练和微调过程中都是可学习的，模型能够自动学会如何为<code>[CLS]</code> token构建一个对当前分类任务最优的全局表示，从而在各类文本分类基准测试中取得了卓越的成绩。</p>
+<h4 id="1-2-3-命名实体识别（NER）">1.2.3 命名实体识别（NER）</h4>
+<p>命名实体识别（Named Entity Recognition, NER）是另一项Encoder-only模型表现出色的NLU任务。NER的目标是识别文本中具有特定意义的实体，如<strong>人名（PER）、地名（LOC）、组织机构名（ORG）<strong>等，并将其分类。与文本分类不同，NER是一个</strong>token级别的分类任务</strong>，即需要为输入序列中的<strong>每一个token</strong>都分配一个标签（例如，B-PER表示人名的开始，I-PER表示人名的中间部分，O表示非实体）。Encoder-only架构非常适合这类任务，因为它能够为序列中的每个token生成独立的、上下文感知的表示。</p>
+<p>在应用于NER任务时，Encoder-only模型（如BERT）会利用其每个token对应的最终隐藏层向量。这些向量随后被送入一个token级别的分类层（通常是线性层和CRF层，或简单的Softmax层），以预测每个token的实体标签。双向自注意力机制在这里发挥了关键作用。例如，在句子“<strong>苹果</strong>公司的创始人是<strong>史蒂夫·乔布斯</strong>”中，模型在处理“苹果”这个词时，由于其双向特性，能够同时看到后面的“公司”一词，从而判断出这里的“苹果”是一个组织名（ORG），而不是一种水果。同样，在看到“史蒂夫”时，它能通过注意力机制与后面的“乔布斯”建立联系，识别出这是一个完整的人名（PER）。这种利用完整上下文来消除歧义、准确识别实体边界的能力，是Encoder-only模型在NER任务上取得成功的核心原因。</p>
+<h4 id="1-2-4-问答系统（抽取式QA）">1.2.4 问答系统（抽取式QA）</h4>
+<p>在抽取式问答（Extractive Question Answering）任务中，模型需要从给定的上下文（Context）中找到一个连续的文本片段作为问题的答案。这类任务（如SQuAD数据集）对模型的文本理解能力提出了很高的要求，而Encoder-only模型在这方面表现优异。处理这类任务时，通常会将<strong>问题（Question）和上下文（Context）拼接成一个序列</strong>作为模型的输入，例如：<code>[CLS] 问题 [SEP] 上下文 [SEP]</code>。模型会利用其双向自注意力机制来建模问题与上下文之间复杂的交互关系。具体来说，问题中的每个词都会“关注”上下文中的所有词，反之亦然，从而找到与问题最相关的证据。</p>
+<p>模型的输出通常是一个<strong>起始位置（start position）和一个结束位置（end position）的概率分布</strong>。这通过在上下文的每个token的隐藏表示之上添加两个独立的线性层来实现。一个线性层用于预测该token作为答案起始位置的概率，另一个用于预测其作为答案结束位置的概率。例如，对于问题“谁发现了美洲？”，上下文是“<strong>哥伦布</strong>在1492年发现了美洲。”，模型会学会在“哥伦布”这个词上输出很高的起始和结束概率。双向注意力机制使得模型能够理解“谁”这个词在提问一个人物，并且能够在上下文中定位到“哥伦布”这个符合要求的实体。通过端到端的微调，模型能够学会如何根据问题的语义精确地从上下文中“抽取”出答案，展现了其强大的理解和推理能力。</p>
+<h4 id="1-2-5-语义相似度判断">1.2.5 语义相似度判断</h4>
+<p>语义相似度判断任务旨在衡量两段文本在语义上的相似程度，例如判断两个句子是否是<strong>同义句（paraphrase）</strong>，或者计算它们的相似度分数。这类任务对于信息检索、重复问题检测、自然语言推理等应用至关重要。Encoder-only模型非常适合处理这类任务，因为它们能够生成<strong>高质量的句子级别嵌入（sentence embeddings）</strong>，这些嵌入可以有效地捕捉句子的整体语义。处理这类任务时，一种常见的方法是将两个句子（Sentence A和Sentence B）拼接后输入模型，格式通常为<code>[CLS] Sentence A [SEP] Sentence B [SEP]</code>，然后使用<code>[CLS]</code> token的最终表示来进行分类（如是/否为同义句）或回归（预测相似度分数）。</p>
+<p>另一种方法是<strong>分别对每个句子进行编码</strong>，然后计算两个句子表示之间的距离或相似度（如余弦相似度）。在这种情况下，模型会为<code>[CLS]</code> token学习到一个能够代表整个句子语义的向量。由于模型在预训练阶段通过NSP（Next Sentence Prediction）等任务已经学习到了建模句子间关系的能力，它在微调阶段能够很好地区分语义相近和不相近的句子对。例如，对于同义句对“他很高兴”和“他感到非常快乐”，模型生成的<code>[CLS]</code>表示在向量空间中会非常接近。而对于语义不同的句子对“他很高兴”和“天气很糟糕”，它们的表示则会相距甚远。这种能力源于模型对词汇、句法和语义的深层理解，使其能够超越简单的关键词匹配，真正把握文本的深层含义，从而在语义相似度任务上取得高精度的结果 。</p>
+<h3 id="1-3-代表模型">1.3 代表模型</h3>
+<h4 id="1-3-1-BERT（Bidirectional-Encoder-Representations-from-Transformers）">1.3.1 BERT（Bidirectional Encoder Representations from Transformers）</h4>
+<p>BERT（Bidirectional Encoder Representations from Transformers）是Encoder-only架构的开创性和最具代表性的模型，由Google在2018年提出。下图直观展示了BERT的整体架构：左侧为预训练阶段（Pre-training），通过MLM和NSP两个任务进行训练；右侧为微调阶段（Fine-Tuning），将预训练好的模型应用于各种下游任务。</p>
+<p><img src="/2026/06/12/llm_architecture/bert_pretraining_finetuning.png" alt="BERT模型架构图，左侧展示预训练阶段（Pre-training），包括Masked LM和NSP两个任务；右侧展示微调阶段（Fine-Tuning），应用于MNLI、NER、SQuAD等不同下游任务"></p>
+<blockquote>
+<p>图4：BERT预训练与微调架构示意图（图片来源：Devlin et al., <a target="_blank" rel="noopener" href="https://arxiv.org/abs/1810.04805">“BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding”</a>, NAACL 2019）</p>
+</blockquote>
+<p>BERT的创新之处在于其预训练方法，它通过<strong>联合使用掩码语言模型（MLM）和下一句预测（NSP）<strong>两个任务，成功地训练出了</strong>深度的双向语言表示</strong>。在MLM任务中，模型随机掩码输入序列中的部分token，并学习根据上下文预测它们。在NSP任务中，模型接收两个句子作为输入，并学习判断第二个句子是否是原文中紧随第一个句子的句子。通过在大规模无标注文本（如英文维基百科和BooksCorpus）上进行这种预训练，BERT获得了强大的语言理解能力。</p>
+<p>BERT模型有两个主要版本：<strong>BERT-BASE</strong>和<strong>BERT-LARGE</strong>。BERT-BASE包含<strong>12层Transformer Encoder</strong>，<strong>110M个参数</strong>；而BERT-LARGE则拥有<strong>24层Encoder</strong>，<strong>340M个参数</strong>，规模更大，能力也更强。BERT的出现彻底改变了自然语言处理领域的格局，它证明了通过在大规模语料上进行深度双向预训练，可以显著提升各类NLU任务的性能。在发布后，BERT迅速在多个NLP基准测试（如GLUE、SQuAD）上取得了 state-of-the-art 的结果。它的成功催生了一系列后续的改进模型，并奠定了预训练-微调（pre-training and fine-tuning）范式的基石。如今，BERT及其变体已被广泛应用于搜索引擎、问答系统、情感分析等众多商业和学术应用中。</p>
+<h4 id="1-3-2-RoBERTa（A-Robustly-Optimized-BERT-Pretraining-Approach）">1.3.2 RoBERTa（A Robustly Optimized BERT Pretraining Approach）</h4>
+<p>RoBERTa（A Robustly Optimized BERT Pretraining Approach）可以看作是BERT的**“优化版”或“加强版”**，由Facebook AI和华盛顿大学的研究人员在2019年提出。研究者们系统地研究了BERT的预训练过程，发现通过对预训练策略进行一些关键的修改，可以显著提升BERT的性能。RoBERTa与BERT在架构上基本相同，但其主要的改进在于预训练的方法和超参数的设置。这些改进包括：</p>
+<ol>
+<li><strong>移除NSP任务</strong>：RoBERTa发现，移除下一句预测（NSP）任务，并使用**全句（full-sentences）<strong>或</strong>单文档（doc-sentences）**的输入格式，可以提升模型在下游任务上的表现。</li>
+<li><strong>动态掩码</strong>：BERT在数据预处理时进行一次静态掩码。RoBERTa则采用<strong>动态掩码</strong>，即在每次将训练数据输入模型时，都重新生成掩码模式，这使得模型在训练过程中能看到更多样化的掩码组合，提高了数据利用效率。</li>
+<li><strong>更大的批次和更长的训练时间</strong>：RoBERTa使用了<strong>更大的mini-batch</strong>（例如，从BERT的256增加到8K）和<strong>更长的训练步数</strong>，并在更多的数据（<strong>160GB</strong>的文本，是BERT的10倍）上进行训练。</li>
+<li><strong>更长的序列</strong>：RoBERTa在预训练时使用了更长的输入序列，以更好地捕捉长距离依赖关系。</li>
+</ol>
+<p>通过这些“健壮”的优化，RoBERTa在GLUE、SQuAD等多个主流NLP基准测试上全面超越了BERT，取得了新的 state-of-the-art 成绩。RoBERTa的成功表明，<strong>预训练的策略和数据规模与模型架构本身同等重要</strong>，为后续的大语言模型研究提供了宝贵的实践经验。</p>
+<h4 id="1-3-3-ALBERT、DistilBERT等其他变体">1.3.3 ALBERT、DistilBERT等其他变体</h4>
+<p>BERT的成功激发了社区对其进行大量改进和扩展，产生了许多重要的变体模型，每个变体都针对特定的方面进行了优化。</p>
+<ul>
+<li><strong>ALBERT (A Lite BERT for Self-supervised Learning of Language Representations)</strong>：主要关注于<strong>参数效率</strong>。ALBERT通过两种技术大幅减少了模型参数量：一是<strong>跨层参数共享（cross-layer parameter sharing）</strong>，即所有Encoder层共享同一套参数；二是<strong>嵌入矩阵分解（factorized embedding parameterization）</strong>，将大的词汇嵌入矩阵分解为两个较小的矩阵。这使得ALBERT在保持与BERT-large相当性能的同时，模型尺寸显著减小，训练速度也更快，更易于部署。</li>
+<li><strong>DistilBERT</strong>：专注于<strong>模型蒸馏（Knowledge Distillation）</strong>。它通过一种称为<strong>蒸馏</strong>的技术，在一个预训练好的大型BERT模型（教师模型）的指导下，训练一个更小的Transformer模型（学生模型）。DistilBERT的参数量比BERT-base<strong>减少了40%</strong>，推理速度<strong>提升了60%</strong>，同时保留了BERT**97%**的语言理解能力，非常适合在计算资源受限的环境中使用。</li>
+<li><strong>ELECTRA (Efficiently Learning an Encoder that Classifies Token Replacements Accurately)</strong>：提出了一种新的、更<strong>高效的预训练任务</strong>，称为**“替换token检测”（Replaced Token Detection, RTD）**。与MLM随机掩码token不同，ELECTRA使用一个小的生成器模型来生成一些看似合理但实际错误的token来替换输入序列中的部分token。然后，模型的任务是判断序列中的每个token是否被替换过。这种类似二分类的任务比MLM的多分类任务计算效率更高，并且能让模型从所有输入token中学习，而不仅仅是被掩码的15%，从而在相同的计算量下获得更好的性能。</li>
+<li><strong>DeBERTa (Decoding-enhanced BERT with Disentangled Attention)</strong>：对注意力机制进行了改进。DeBERTa将每个token的表示分解为**内容（content）和位置（position）<strong>两个向量，并在计算注意力分数时分别计算它们的贡献。这种</strong>“解耦的注意力机制”（disentangled attention mechanism）**使模型能够更精确地捕捉token之间的相对位置关系，从而提升了模型在NLU和NLG（通过添加一个解码器）任务上的表现。</li>
+</ul>
+<p>下表总结了这些主要BERT变体的核心特点：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">模型名称</th>
+<th style="text-align:left">核心创新/优化方向</th>
+<th style="text-align:left">主要技术特点</th>
+<th style="text-align:left">优势</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>BERT</strong></td>
+<td style="text-align:left">深度双向预训练</td>
+<td style="text-align:left">MLM + NSP预训练任务</td>
+<td style="text-align:left">开创了双向表示的预训练范式，奠定了NLU任务的基准。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>RoBERTa</strong></td>
+<td style="text-align:left">更优的预训练策略</td>
+<td style="text-align:left">移除NSP，动态掩码，更大批次和更多数据</td>
+<td style="text-align:left">通过更精细的训练过程，在多个基准上显著超越BERT。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>ALBERT</strong></td>
+<td style="text-align:left">参数效率</td>
+<td style="text-align:left">跨层参数共享，嵌入矩阵分解</td>
+<td style="text-align:left">大幅减少参数量，降低内存占用和训练成本，同时保持高性能。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>DistilBERT</strong></td>
+<td style="text-align:left">模型压缩与加速</td>
+<td style="text-align:left">知识蒸馏技术</td>
+<td style="text-align:left">模型更小、速度更快，适合资源受限的部署环境，保留大部分性能。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>ELECTRA</strong></td>
+<td style="text-align:left">更高效的预训练任务</td>
+<td style="text-align:left">替换token检测（RTD）</td>
+<td style="text-align:left">训练效率更高，能从所有token中学习，在同等计算量下表现更佳。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>DeBERTa</strong></td>
+<td style="text-align:left">改进的注意力机制</td>
+<td style="text-align:left">解耦的内容和位置注意力</td>
+<td style="text-align:left">更精确地建模相对位置关系，提升了复杂语言任务的性能。</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2-Decoder-Only（仅解码器）架构">2. Decoder-Only（仅解码器）架构</h2>
+<p>解码器就像一个<strong>作者</strong>。它的任务是<strong>逐步生成文本</strong>。当它写下一个词时，会回顾已经写好的内容，并预测接下来应该出现什么。</p>
+<blockquote>
+<p>简单概括：<strong>解码器 = 根据已生成的词来写出下一个词</strong>。</p>
+</blockquote>
+<p><img src="/2026/06/12/llm_architecture/decoder_architecture.png" alt="decoder_architecture"></p>
+<blockquote>
+<p>图5：Decoder架构示意图（图片来源：<a target="_blank" rel="noopener" href="https://sid-sharma1990.medium.com/everything-about-encoder-and-decoder-models-in-generative-ai-e4c00fef8b6a">“Everything about Encoder and Decoder Models”</a>）</p>
+</blockquote>
+<h3 id="2-1-核心原理">2.1 核心原理</h3>
+<h4 id="2-1-1-因果自注意力机制（Causal-Self-Attention）">2.1.1 因果自注意力机制（Causal Self-Attention）</h4>
+<p>Decoder-only架构的核心在于其采用的<strong>因果自注意力机制（Causal Self-Attention）</strong>，也常被称为<strong>单向（unidirectional）或自回归（autoregressive）注意力</strong>。与Encoder的双向注意力不同，因果注意力在计算序列中某个位置的表示时，<strong>只允许该位置“看到”它本身以及之前的位置，而屏蔽（mask）掉所有后续位置的信息</strong> 。这种机制通过一个上三角掩码矩阵（upper-triangular mask matrix）实现，其中对应于未来位置的元素被设置为一个非常大的负数（如负无穷），使得在Softmax计算后，这些位置的注意力权重变为零。这种设计确保了模型在生成序列时，<strong>预测第t个token的输出仅仅依赖于位置1到t-1的输入token</strong>，从而保持了序列生成的顺序性和因果性。</p>
+<p>这种单向处理方式是生成任务的本质要求。在生成文本、代码或其他序列时，模型必须按照时间步或位置顺序，<strong>一次一个地预测下一个元素</strong>。如果模型在预测当前词时能看到未来的词，那么生成就失去了意义，变成了对已知序列的重构。因此，因果注意力强制模型学习一种<strong>从左到右的依赖模式</strong>，即基于已生成的所有前文来预测下一个最可能的词。例如，在句子“我今天要去”中，模型在预测“要去”后面的词时，只能依赖“我”、“今天”、“要”、“去”这些已经出现的词，而不能“偷看”后面的“超市”或“公园”。这种机制使得Decoder-only模型非常适合作为<strong>语言模型（Language Model）</strong>，其基本任务就是建模一个序列的概率分布 <span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mo stretchy="false">(</mo><msub><mi>w</mi><mn>1</mn></msub><mo separator="true">,</mo><msub><mi>w</mi><mn>2</mn></msub><mo separator="true">,</mo><mi mathvariant="normal">.</mi><mi mathvariant="normal">.</mi><mi mathvariant="normal">.</mi><mo separator="true">,</mo><msub><mi>w</mi><mi>x</mi></msub><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">P(w_1, w_2, ..., w_x)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">...</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">x</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>，并将其分解为一系列条件概率的乘积：<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mo stretchy="false">(</mo><msub><mi>w</mi><mn>1</mn></msub><mo separator="true">,</mo><msub><mi>w</mi><mn>2</mn></msub><mo separator="true">,</mo><mi mathvariant="normal">.</mi><mi mathvariant="normal">.</mi><mi mathvariant="normal">.</mi><mo separator="true">,</mo><msub><mi>w</mi><mi>x</mi></msub><mo stretchy="false">)</mo><mo>=</mo><mo>∏</mo><mi>P</mi><mo stretchy="false">(</mo><msub><mi>w</mi><mi>i</mi></msub><mi mathvariant="normal">∣</mi><msub><mi>w</mi><mn>1</mn></msub><mo separator="true">,</mo><mi mathvariant="normal">.</mi><mi mathvariant="normal">.</mi><mi mathvariant="normal">.</mi><mo separator="true">,</mo><msub><mi>w</mi><mrow><mi>i</mi><mo>−</mo><mn>1</mn></mrow></msub><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">P(w_1, w_2, ..., w_x) = ∏ P(w_{i} | w_1, ..., w_{i-1})</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">...</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">x</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mop op-symbol small-op" style="position:relative;top:0em;">∏</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">P</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">∣</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3011em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">...</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0269em;">w</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span><span class="mbin mtight">−</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2083em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span>。</p>
+<h4 id="2-1-2-自回归（Autoregressive）语言建模预训练目标">2.1.2 自回归（Autoregressive）语言建模预训练目标</h4>
+<p>Decoder-only模型的标准预训练目标是<strong>自回归语言建模（Autoregressive Language Modeling）</strong>，其核心任务是**“下一个token预测”（Next Token Prediction）** 。在训练过程中，模型接收一个长度为n的token序列作为输入，其目标是预测序列中每个位置i的下一个token，即预测第i+1个token。由于因果自注意力的存在，模型在预测位置i+1的输出时，只能利用位置1到i的信息。训练的损失函数通常是<strong>交叉熵损失（Cross-Entropy Loss）</strong>，它衡量了模型预测的下一个token的概率分布与真实的下一个token之间的差异。通过在大规模文本语料库（如网页、书籍、代码等）上进行这种自监督学习，模型能够习得语言的统计规律、语法结构、语义知识和世界知识。</p>
+<p>这种预训练方式赋予了Decoder-only模型强大的生成能力。由于它一直在练习“接龙”游戏，即根据前文续写后文，因此它非常擅长<strong>开放式地、连贯地生成文本</strong>。当一个Decoder-only模型（如GPT）被给定一个初始文本片段（prompt）时，它会首先根据这个prompt计算出最后一个词的隐藏状态，然后通过一个线性层和Softmax函数预测下一个词的概率分布。接着，它会从这个分布中采样（或使用贪婪解码、束搜索等策略）一个词作为输出，并将这个词添加到序列的末尾。这个过程会不断重复，直到生成了完整的句子、段落或文档，或者遇到了一个特殊的终止符。正是这种以“预测下一个”为核心的训练和生成范式，使得Decoder-only架构成为了现代大语言模型（LLMs）的主流，驱动了如GPT系列、LLaMA等一系列强大生成模型的诞生。</p>
+<h4 id="2-1-3-模型结构特点：无编码器部分">2.1.3 模型结构特点：无编码器部分</h4>
+<p>与Encoder-only模型相反，Decoder-only架构<strong>仅使用了Transformer中的解码器（Decoder）部分</strong>，而省略了编码器（Encoder）。一个标准的Transformer Decoder层除了包含与Encoder类似的多头自注意力机制和前馈网络外，还额外包含一个<strong>交叉注意力（Cross-Attention）<strong>子层，用于在序列到序列（seq2seq）任务中关注编码器的输出。然而，在纯粹的Decoder-only架构（如GPT）中，由于不存在编码器，这个</strong>交叉注意力层也被移除</strong>了。因此，一个Decoder-only层主要由两部分组成：<strong>带掩码的多头自注意力（Masked Multi-Head Self-Attention）<strong>和</strong>位置全连接前馈网络（Position-wise Feed-Forward Network）</strong>。</p>
+<p>这种结构使得模型专注于自回归生成任务。输入序列（包括prompt和已经生成的部分）被送入这个堆叠的Decoder结构中。每一层的因果自注意力机制都会根据当前位置之前的所有信息来更新表示。由于没有编码器来处理输入，<strong>输入的prompt也被当作生成过程的一部分</strong>，其信息通过自注意力机制在模型内部传递，并影响后续token的生成。这种简洁的“同质化”结构（即所有层都是Decoder层）有几个优点：首先，它使得模型架构更加统一和简洁，易于实现和扩展。其次，它在推理时非常高效，因为可以使用<strong>KV-cache等技术来避免重复计算</strong>，加速生成过程。最后，这种架构的通用性极强，通过改变输入prompt的格式，同一个模型可以被用于执行多种不同的任务，如翻译、摘要、问答等，而无需对模型结构进行任何修改，这被称为<strong>上下文学习（in-context learning）<strong>或</strong>提示工程（prompt engineering）</strong>。</p>
+<h3 id="2-2-适用任务与原因">2.2 适用任务与原因</h3>
+<h4 id="2-2-1-自然语言生成（NLG）任务">2.2.1 自然语言生成（NLG）任务</h4>
+<p>Decoder-only架构的设计初衷就是为了<strong>自然语言生成（Natural Language Generation, NLG）</strong>，因此它在这类任务中表现出无与伦比的优势。NLG任务的目标是创造出新的、连贯的、符合语法和语义规范的文本，这与Decoder-only模型的自回归特性完美契合。模型通过在预训练阶段进行“下一个token预测”的任务，本质上就是在学习如何“续写”文本。这种能力可以直接迁移到各种NLG下游任务中。无论是撰写一篇文章、生成一段对话、还是将一段代码补充完整，其核心都是一个序列生成过程，即<strong>从一个初始状态（prompt）出发，逐步构建出完整的输出序列</strong> 。</p>
+<p>Decoder-only模型在NLG任务中的成功，主要得益于其<strong>强大的上下文学习和模式复现能力</strong>。在训练过程中，模型接触了海量的文本数据，从中学习到了各种各样的文本模式，包括不同文体的写作风格、对话的逻辑流转、代码的语法结构等。当给定一个精心设计的prompt时，模型能够识别出prompt所暗示的任务和风格，并“模仿”其在训练数据中看到过的类似模式来生成文本。例如，如果一个prompt的格式是“将以下英文翻译成法文：Hello world -&gt;”，模型就可能会激活它在训练数据中学到的翻译模式，生成“Bonjour le monde”。这种能力使得Decoder-only模型成为通用性极强的文本生成器，能够处理几乎所有可以形式化为“文本到文本”的生成任务，并且随着模型规模的增大，其生成质量和多样性也会显著提升。</p>
+<h4 id="2-2-2-文本生成（文章、故事、诗歌）">2.2.2 文本生成（文章、故事、诗歌）</h4>
+<p><strong>开放式文本生成</strong>是Decoder-only模型最引人注目的能力之一，包括撰写文章、创作故事、编写诗歌等。在这些任务中，用户通常只提供一个简短的主题、开头或提示（prompt），然后由模型自主地、创造性地生成后续内容。例如，给定prompt“在一个遥远的星系里，有一个被遗忘的星球，上面住着……”，模型可以生成一个充满想象力的科幻故事。这种能力的背后是模型在训练过程中从互联网等海量文本中吸收的<strong>丰富知识和多样的写作风格</strong>。</p>
+<p>Decoder-only模型在生成文本时，不仅仅是在随机组合词语，而是在每一步都试图预测一个<strong>在语法、语义和上下文上最合理的下一个词</strong>。通过采样策略（如temperature sampling, top-k sampling, top-p/nucleus sampling），可以控制生成文本的**创造性（creativity）和连贯性（coherence）**之间的平衡。例如，较低的temperature会使模型更倾向于选择概率最高的词，从而生成更保守、更确定的文本；而较高的temperature则会增加选择低概率词的机会，使生成结果更多样、更出人意料。这种机制使得模型能够模仿不同作者的写作风格，从海明威的简洁到莎士比亚的诗意，从而在各种创意写作任务中展现出惊人的才华。GPT系列、LLaMA等模型正是凭借这种强大的生成能力，成为了作家、营销人员和内容创作者的得力助手。</p>
+<h4 id="2-2-3-对话系统与聊天机器人">2.2.3 对话系统与聊天机器人</h4>
+<p>对话系统和聊天机器人是Decoder-only模型最成功的应用之一，也是最直接体现其生成能力的场景。在这些应用中，模型需要根据用户的输入（utterance）生成一个自然、相关且有帮助的回复。这个过程可以被完美地建模为一个<strong>序列到序列的生成任务</strong>，其中用户的输入是prompt，模型的回复是生成的序列。例如，用户的输入“你好，请问今天天气怎么样？”构成了prompt，模型则会生成“你好！今天是晴天，气温在20到28度之间，很适合外出。”</p>
+<p>为了使模型在对话任务中表现良好，通常会在大规模的对话数据上对其进行<strong>微调（fine-tuning）</strong>，或者使用更先进的方法如<strong>基于人类反馈的强化学习（Reinforcement Learning from Human Feedback, RLHF）</strong>。RLHF通过收集人类对模型生成回复的偏好排序数据，训练一个奖励模型（reward model）来评估回复的质量，然后使用强化学习算法（如PPO）来优化语言模型，使其生成能够获得更高奖励的回复。经过这种训练，模型能够学会生成<strong>更符合人类价值观、更有用、更无害</strong>的回复。ChatGPT等先进对话系统正是基于这种技术，展现了流畅、连贯且能遵循复杂指令的对话能力，使得人机交互体验达到了前所未有的高度。</p>
+<h4 id="2-2-4-代码生成">2.2.4 代码生成</h4>
+<p>代码生成是近年来Decoder-only模型的一个新兴且极具潜力的应用领域。由于代码本身也是一种具有严格语法和逻辑结构的“语言”，因此非常适合用语言模型来建模。通过在<strong>大规模的代码数据集</strong>（如GitHub上的公开代码库）上进行预训练，Decoder-only模型能够学习到各种编程语言（如Python, Java, C++等）的语法规则、常用库函数、API调用模式以及算法逻辑。这使得它们能够根据自然语言描述或部分代码片段，<strong>自动生成完整的、可运行的代码</strong>。</p>
+<p>例如，给定一个注释“<code># 定义一个函数，计算斐波那契数列的第n项</code>”，模型可以自动生成对应的Python函数实现。或者，在给定一个函数签名和部分实现的情况下，模型可以“智能地”补全剩余部分。像<strong>GitHub Copilot</strong>这样的工具就是基于Codex等代码生成模型，能够实时地为程序员提供代码建议，极大地提升了开发效率。除了代码补全，这些模型还能进行<strong>代码翻译（将一种语言的代码转换为另一种）、代码解释（用自然语言解释代码功能）、以及代码调试（找出代码中的bug并给出修复建议）</strong>。代码生成任务的成功，进一步证明了Decoder-only架构作为一种通用序列生成器的强大能力和广阔应用前景。</p>
+<h4 id="2-2-5-机器翻译（Zero-shot-Few-shot）">2.2.5 机器翻译（Zero-shot/Few-shot）</h4>
+<p>虽然传统的机器翻译任务通常由Encoder-Decoder架构主导，但大型Decoder-only模型通过其强大的<strong>上下文学习能力（in-context learning）</strong>，在翻译任务上也取得了令人瞩目的成果，尤其是在**零样本（Zero-shot）和少样本（Few-shot）**设置下。在这些设置中，模型并没有在专门的平行语料上进行微调，而是通过在prompt中提供几个示例（few-shot）或仅仅通过任务描述（zero-shot）来“学会”翻译。例如，一个用于法语到英语翻译的few-shot prompt可能如下所示：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Translate French to English:</span><br><span class="line">French: Bonjour.</span><br><span class="line">English: Hello.</span><br><span class="line">French: Merci beaucoup.</span><br><span class="line">English: Thank you very much.</span><br><span class="line">French: Où est la bibliothèque?</span><br><span class="line">English:</span><br></pre></td></tr></table></figure>
+<p>模型会利用其自注意力机制来分析这些示例中的模式，即“法语句子”和“英语句子”之间的对应关系，然后将这种模式应用到最后的输入上，生成“Where is the library?”。这种能力表明，模型在预训练阶段从海量的多语言文本中，已经<strong>隐式地学习到了不同语言之间的映射关系和共有的语义空间</strong>。虽然其在翻译质量上可能仍略逊于专门优化的Encoder-Decoder模型或经过微调的模型，但其无需额外训练即可执行翻译任务的通用性和灵活性，展示了其作为一种“通用任务求解器”的巨大潜力。</p>
+<h3 id="2-3-代表模型">2.3 代表模型</h3>
+<h4 id="2-3-1-GPT系列（GPT-1-GPT-2-GPT-3-GPT-4）">2.3.1 GPT系列（GPT-1, GPT-2, GPT-3, GPT-4）</h4>
+<p>GPT（Generative Pre-trained Transformer）系列模型是Decoder-only架构的开创者和最著名的代表，由OpenAI开发。每一代GPT模型都在规模、数据和训练方法上实现了重大突破，持续推动着大语言模型能力的边界。</p>
+<ul>
+<li><strong>GPT-1</strong>：于2018年提出，首次将<strong>无监督预训练和有监督微调</strong>相结合的范式应用于自然语言处理。它使用了<strong>12层</strong>的Transformer Decoder，在BooksCorpus数据集上进行预训练，展示了强大的迁移学习能力。</li>
+<li><strong>GPT-2</strong>：于2019年发布，将模型规模扩大到<strong>15亿参数</strong>，并在更大规模、更多样化的WebText数据集上进行训练。GPT-2最令人惊讶的能力是其在**零样本（zero-shot）**设置下，无需任何微调就能执行多种NLP任务（如翻译、摘要、问答），证明了大型语言模型可以作为通用的多任务学习器。</li>
+<li><strong>GPT-3</strong>：于2020年发布，是一个真正的“巨兽”，参数量达到了惊人的<strong>1750亿</strong>。GPT-3进一步展示了“规模效应”（scaling laws），即模型性能随规模、数据量和计算量的增加而显著提升。下图展示了GPT-3的上下文学习（In-context Learning）范式，包括Zero-shot、One-shot和Few-shot三种设置，以及与传统Fine-tuning的对比。</li>
+</ul>
+<style>.snetjdwkdfjt{zoom:50%;}</style><img src="/2026/06/12/llm_architecture/in_context_learning.png" class="snetjdwkdfjt" alt="in_context_learning">
+<blockquote>
+<p>图6：GPT-3的上下文学习（In-context Learning）范式（图片来源：Brown et al., <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2005.14165">“Language Models are Few-Shot Learners”</a>, NeurIPS 2020）</p>
+</blockquote>
+<p>GPT-3在少样本（few-shot）学习上的表现尤为突出，能够通过仅仅几个示例就快速适应新任务，其生成的文本质量达到了以假乱真的程度。</p>
+<ul>
+<li><strong>GPT-4</strong>：作为GPT系列的最新一代，其具体的架构细节和参数量未被公开。但从其展现的能力来看，它是一个<strong>多模态模型</strong>，不仅能处理文本，还能理解图像输入。GPT-4在各类专业和学术基准测试上表现出了人类水平的性能，其推理能力、遵循复杂指令的能力和安全性都得到了极大的提升，成为了当前最先进的大语言模型之一。</li>
+</ul>
+<h4 id="2-3-2-LLaMA（Large-Language-Model-Meta-AI）">2.3.2 LLaMA（Large Language Model Meta AI）</h4>
+<p>LLaMA是由Meta AI（原Facebook AI）于2023年发布的一系列<strong>开源</strong>大语言模型。与当时大多数高性能的闭源模型（如GPT-3）不同，<strong>LLaMA的模型权重被公开（用于研究目的）</strong>，这极大地推动了学术界和开源社区对大语言模型的研究和应用。LLaMA模型在设计上注重<strong>训练的效率和性能的平衡</strong>，通过使用更多的数据和更长的训练时间，而不是无限增加模型参数，来 achieving state-of-the-art 的性能。</p>
+<p>LLaMA系列提供了从<strong>70亿到650亿参数</strong>不等的多个模型版本。其训练数据集包含了<strong>1.4万亿个token</strong>，来源包括维基百科、书籍、GitHub代码和科学论文等。LLaMA在架构上沿用了标准的Decoder-only Transformer，但采用了一些优化，如<strong>预归一化（Pre-normalization）、SwiGLU激活函数和旋转位置编码（Rotary Positional Embeddings, RoPE）</strong>。LLaMA的开源发布引发了巨大的反响，社区基于它衍生出了大量的微调模型（如Alpaca, Vicuna），极大地促进了开源大模型生态的繁荣，为众多研究者和开发者提供了强大的工具。</p>
+<h4 id="2-3-3-PaLM、Claude、Qwen、DeepSeek等其他模型">2.3.3 PaLM、Claude、Qwen、DeepSeek等其他模型</h4>
+<p>除了GPT和LLaMA系列，还有许多其他优秀的Decoder-only模型，它们各自在不同的方向上进行了探索和创新。</p>
+<ul>
+<li><strong>PaLM (Pathways Language Model)</strong>：由Google开发，是一个拥有<strong>5400亿参数</strong>的巨型模型。PaLM在训练时使用了Google的Pathways系统，能够在数千个TPU芯片上进行高效训练。它在<strong>推理、代码生成和多语言理解</strong>等任务上表现出色，尤其是在需要多步推理的复杂问题上展现了强大的能力。</li>
+<li><strong>Claude</strong>：由Anthropic公司开发，与OpenAI的GPT系列是竞争对手。Claude系列模型（如Claude 2, Claude 3）以其<strong>长上下文窗口（支持高达20万token的上下文）、强大的推理能力和对安全性的高度重视</strong>而著称。Anthropic致力于开发可靠、可解释和可操控的AI系统，Claude在生成有用、无害且诚实的回复方面表现优异。</li>
+<li><strong>Qwen (通义千问)</strong>：由阿里巴巴云开发的一系列大语言模型。Qwen系列包括多个尺寸的模型（如Qwen-7B, Qwen-14B, Qwen-72B），并在<strong>中英文理解和生成、代码、数学推理</strong>等方面表现出色。Qwen模型是开源的，并且提供了丰富的工具和生态系统，如Qwen-Agent和Qwen-VL（视觉语言模型），受到了国内外开发者的广泛关注。</li>
+<li><strong>DeepSeek (深度求索)</strong>：由中国深度求索公司开发的大语言模型系列。DeepSeek系列模型（如DeepSeek-LLM, DeepSeek-V2, DeepSeek-Coder）以其<strong>卓越的性能和极高的性价比</strong>而闻名。特别是其采用的**Multi-head Latent Attention (MLA)**等创新架构，显著降低了推理成本。DeepSeek模型在代码、数学和中文理解等任务上达到了国际领先水平，其开源策略也极大地推动了相关领域的发展。</li>
+</ul>
+<h2 id="3-Encoder-Decoder（编码器-解码器）架构">3. Encoder-Decoder（编码器-解码器）架构</h2>
+<p>编码器-解码器模型<strong>同时使用了“读者”和“作者”这两个部分</strong>。编码器首先读取并理解输入，解码器随后生成输出。</p>
+<blockquote>
+<p>简单概括：<strong>编码器-解码器 = 先理解，再生成</strong>。</p>
+</blockquote>
+<p>当我们需要将一种形式的文本转换为另一种时，这种方式非常有用。</p>
+<p><img src="/2026/06/12/llm_architecture/encoder_decoder_architecture.png" alt="decoder_architecture"></p>
+<blockquote>
+<p>图7：Encoder-Decoder架构示意图（图片来源：<a target="_blank" rel="noopener" href="https://sid-sharma1990.medium.com/everything-about-encoder-and-decoder-models-in-generative-ai-e4c00fef8b6a">“Everything about Encoder and Decoder Models”</a>）</p>
+</blockquote>
+<h3 id="3-1-核心原理">3.1 核心原理</h3>
+<h4 id="3-1-1-编码器：双向注意力理解输入序列">3.1.1 编码器：双向注意力理解输入序列</h4>
+<p>Encoder-Decoder架构中的编码器（Encoder）部分在结构和功能上与Encoder-only模型（如BERT）非常相似。它由多个堆叠的Transformer Encoder层组成，每一层都包含一个<strong>双向的多头自注意力机制</strong>和一个前馈网络。当处理输入序列（例如，一个待翻译的英文句子）时，编码器能够同时关注序列中的所有位置，为每个输入token生成一个<strong>深度的、上下文感知的表示</strong>。这个过程的本质是对输入信息进行<strong>压缩和抽象</strong>，将整个输入序列的语义和结构信息编码成一系列的<strong>隐藏状态（hidden states）<strong>或</strong>上下文向量（context vectors）</strong>。</p>
+<p>这些由编码器输出的隐藏状态构成了对输入序列的**“思想”或“意义”的分布式表示**。它们不仅包含了每个词本身的含义，还融入了该词与句子中其他所有词的关系信息。在后续的解码过程中，这些上下文向量将作为“记忆”或“参考”，指导解码器生成正确的输出。例如，在机器翻译任务中，编码器会分析源语言句子的句法结构和语义关系，比如主语、谓语、宾语分别是什么，它们之间是如何关联的。这些信息都会被有效地封装在编码器的输出向量中。编码器的这种<strong>双向理解能力</strong>是整个Encoder-Decoder架构能够有效完成序列转换任务的基石，因为它确保了模型在开始生成输出之前，已经对输入内容有了全面而深刻的把握。</p>
+<h4 id="3-1-2-解码器：因果自注意力生成输出序列">3.1.2 解码器：因果自注意力生成输出序列</h4>
+<p>Encoder-Decoder架构中的解码器（Decoder）部分则负责生成输出序列。它在结构上类似于Decoder-only模型，由多个堆叠的Transformer Decoder层组成。每一层Decoder包含三个主要的子层：<strong>带掩码的多头自注意力机制（Masked Multi-Head Self-Attention）</strong>、<strong>交叉注意力机制（Cross-Attention）<strong>和</strong>前馈网络（Feed-Forward Network）</strong>。其中，带掩码的自注意力机制确保了模型在生成序列时是<strong>自回归</strong>的，即在预测第i个输出token时，只能依赖于已经生成的i-1个token，而不能“偷看”未来的输出。</p>
+<p>解码器的核心创新在于其<strong>交叉注意力机制</strong>。这个机制的Query来自于解码器前一层的输出（即已生成部分序列的表示），而Key和Value则<strong>直接来源于编码器的最终输出</strong>（即输入序列的上下文向量）。通过这种方式，解码器在生成每一个输出token时，都能够**“回看”并“查询”整个输入序列**，从而找到与当前生成步骤最相关的源语言信息。例如，在翻译“Hello world”到法语时，当解码器准备生成“monde”（世界）这个词时，它的交叉注意力机制会重点关注编码器输出的对应于“world”的上下文向量，从而确保翻译的准确性。这种<strong>编码器-解码器之间的信息桥梁</strong>使得模型能够将输入序列的语义精确地“翻译”或“转换”成输出序列，是架构能够处理复杂序列到序列任务的关键所在。</p>
+<h4 id="3-1-3-交叉注意力机制（Cross-Attention）连接编码器与解码器">3.1.3 交叉注意力机制（Cross-Attention）连接编码器与解码器</h4>
+<p>交叉注意力机制（Cross-Attention）是Encoder-Decoder架构的<strong>灵魂和核心创新</strong>，它实现了编码器和解码器之间的有效信息传递和交互。与自注意力（Self-Attention）中Query, Key, Value都来源于同一个序列不同，交叉注意力的Query来自于<strong>目标序列（即解码器已经生成的部分）</strong>，而Key和Value则来自于<strong>源序列（即编码器的输出）</strong>。具体来说，在解码器的每一层，当前位置生成的Query向量会与编码器输出的所有Key向量进行点积运算，计算出一组注意力分数。这组分数表示了在生成当前目标词时，源序列中的哪些部分是相关的、重要的。然后，这些分数经过Softmax归一化后，被用来对编码器输出的Value向量进行<strong>加权求和</strong>，从而得到一个<strong>上下文向量（context vector）</strong>。这个上下文向量融合了所有源序列中与当前解码步骤相关的信息。</p>
+<p>这个过程可以被形象地理解为：<strong>解码器在生成每一个词时，都会向编码器“提问”（Query），询问“为了生成下一个词，我应该关注输入句子的哪个部分？”</strong>。编码器则根据自己的“记忆”（Key和Value）来回答这个问题，并提供一个综合了相关信息的“答案”（上下文向量）。这个“答案”随后会与解码器自身的表示相结合，一同输入到前馈网络中，以做出最终的生成决策。例如，在生成摘要的任务中，当解码器准备生成一个概括性的主题句时，它的Query可能会促使交叉注意力机制去关注源文章中的标题、第一段或结论部分。这种<strong>动态的、有选择性的信息提取机制</strong>，使得模型能够处理输入和输出序列长度不同、结构不同的复杂转换任务，是机器翻译、文本摘要等应用取得成功的技术保障。</p>
+<h4 id="3-1-4-序列到序列（Sequence-to-Sequence）预训练目标">3.1.4 序列到序列（Sequence-to-Sequence）预训练目标</h4>
+<p>Encoder-Decoder模型的预训练目标通常设计为某种形式的**序列到序列（Sequence-to-Sequence, Seq2Seq）**重建任务。与Decoder-only模型的简单“下一个token预测”不同，Seq2Seq预训练要求模型学习如何将一个完整的输入序列映射到一个完整的输出序列。最常见的两种预训练目标是：</p>
+<ol>
+<li><strong>去噪自编码器（Denoising Autoencoder）</strong>：这是BART等模型采用的核心预训练目标。在这个过程中，输入的源序列首先会被一个“噪声”函数进行破坏，例如<strong>随机地屏蔽（mask）一些token、删除一些token、打乱句子的顺序</strong>或者进行旋转等。然后，编码器接收这个被破坏的序列，而解码器的任务则是**重构（reconstruct）**出原始的、未被破坏的序列。这种训练方式迫使模型学习理解被破坏输入的上下文，并生成连贯、完整的输出，非常有效地提升了模型在生成和修复任务上的能力。</li>
+<li><strong>Span Corruption（片段破坏）</strong>：这是T5模型采用的目标。它随机选择一些文本片段（spans），并用一个单一的哨兵token（sentinel token）来替换它们。模型的任务是预测出被替换掉的原始文本片段。例如，对于句子“<strong>Thank you</strong> for inviting me to the <strong>party last week</strong>”，模型可能会看到输入为“<code>&lt;X&gt;</code> for inviting me to the <code>&lt;Y&gt;</code>”，而目标是生成“<code>Thank you &lt;X&gt; party last week &lt;Y&gt;</code>”。这种目标统一了“理解”（编码器分析输入）和“生成”（解码器生成被掩码的片段）的过程，并为所有NLP任务提供了一个统一的“文本到文本”框架。</li>
+</ol>
+<p>这些Seq2Seq预训练目标使得Encoder-Decoder模型在开始微调下游任务之前，就已经掌握了强大的序列转换能力，为后续的翻译、摘要等任务打下了坚实的基础。</p>
+<h3 id="3-2-适用任务与原因">3.2 适用任务与原因</h3>
+<h4 id="3-2-1-序列到序列（Seq2Seq）转换任务">3.2.1 序列到序列（Seq2Seq）转换任务</h4>
+<p>Encoder-Decoder架构是为<strong>序列到序列（Sequence-to-Sequence, Seq2Seq）<strong>转换任务而生的。这类任务的特点是</strong>输入和输出都是序列，但它们的长度、结构甚至模态都可能不同</strong>。Encoder-Decoder架构通过其独特的“编码-再解码”的范式，完美地解决了这类问题。编码器负责**“理解”和“压缩”<strong>输入序列，将其复杂的语义信息转换为一组固定长度的上下文向量；解码器则负责</strong>“解压”和“生成”**，基于这些上下文向量，自回归地构建出目标输出序列。这种明确的分工使得模型能够灵活地处理各种复杂的转换问题。例如，在机器翻译中，输入是一个句子，输出是另一个语言的句子；在文本摘要中，输入是一篇长文章，输出是一段简短的摘要。Encoder-Decoder架构的强大之处在于，它将所有这些问题都统一到了一个框架下：无论任务多么不同，核心都是将一个序列转换为另一个序列。</p>
+<p>这种架构的成功，关键在于<strong>交叉注意力机制</strong>提供的强大对齐能力。在生成输出的每一步，解码器都可以动态地查询输入序列，找到最相关的源信息。这使得模型能够处理长距离依赖和复杂的结构转换。例如，在翻译一个包含从句的复杂句子时，解码器可以通过交叉注意力准确地找到主句和从句的对应关系，从而生成语法正确的目标语言句子。此外，Seq2Seq的预训练目标（如去噪自编码）也使得模型在微调前就已经具备了强大的序列重构能力，进一步提升了其在下游任务上的表现。因此，Encoder-Decoder架构成为了机器翻译、文本摘要等任务的传统和主流选择。</p>
+<h4 id="3-2-2-机器翻译">3.2.2 机器翻译</h4>
+<p>**机器翻译（Machine Translation, MT）**是Encoder-Decoder架构最经典和最成功的应用。从Transformer模型的原始论文开始，这种架构就被设计用于解决翻译问题。机器翻译的本质就是将一种语言的序列（源语言）转换为另一种语言的序列（目标语言），这与Seq2Seq的框架完美契合。在翻译过程中，<strong>编码器首先“阅读”并理解整个源语言句子</strong>，捕捉其句法结构和语义含义。然后，<strong>解码器逐词地生成目标语言句子</strong>。在生成每个目标词时，解码器通过交叉注意力机制，可以在源语言句子中找到与之对应的词或短语，从而实现精确的对齐和翻译。</p>
+<p>例如，在将英语句子“The cat sat on the mat”翻译成法语时，编码器会为每个英语词生成一个上下文表示。当解码器生成法语单词“chat”（猫）时，其交叉注意力会高度关注英语单词“cat”的表示。同样，在生成“tapis”（垫子）时，它会关注“mat”。这种<strong>词级别的软对齐</strong>能力，使得模型能够处理词语顺序不同、一词多译等复杂的翻译现象。多语言模型如<strong>mBART</strong>和<strong>mT5</strong>通过在多种语言的语料上进行预训练，进一步提升了其在低资源语言对和零样本翻译（zero-shot translation）上的表现，证明了Encoder-Decoder架构在处理跨语言信息转换方面的强大能力。</p>
+<h4 id="3-2-3-文本摘要（抽取式与生成式）">3.2.3 文本摘要（抽取式与生成式）</h4>
+<p>文本摘要任务旨在将一个长文档压缩成一个简短的、保留核心信息的摘要。Encoder-Decoder架构非常适合这类任务，尤其是<strong>生成式摘要（abstractive summarization）</strong>。在生成式摘要中，模型不仅需要从原文中提取关键句子（如抽取式摘要），还需要<strong>理解原文的精髓，并用新的、更简洁的语言重新表达出来</strong>，这包括进行同义替换、合并句子、甚至生成原文中没有出现过的概括性词语。Encoder-Decoder架构的双组件设计使其能够很好地完成这项工作：<strong>编码器负责深入理解长文档的内容和结构</strong>，而<strong>解码器则负责生成流畅、连贯且忠于原文的摘要</strong>。</p>
+<p>在生成摘要时，解码器的交叉注意力机制会学习将注意力集中在原文中最重要的部分，如开头、结尾、包含关键词的句子等。通过Seq2Seq预训练（如BART的去噪自编码目标），模型已经学会了如何“改写”和“压缩”文本，这使得它在微调摘要任务时能够更快地收敛并取得更好的效果。例如，BART和T5及其变体在CNN/Daily Mail等主流摘要数据集上取得了 state-of-the-art 的成绩，生成的摘要质量高，可读性强。它们能够有效地处理长文档，并生成既包含关键信息又语言流畅的摘要，极大地推动了新闻摘要、会议纪要、文献综述等领域的自动化进程。</p>
+<h4 id="3-2-4-问答系统（生成式QA）">3.2.4 问答系统（生成式QA）</h4>
+<p>除了抽取式问答，Encoder-Decoder架构在<strong>生成式问答（Generative Question Answering）<strong>任务中也扮演着重要角色。在生成式QA中，问题的答案</strong>不一定直接存在于上下文</strong>中，而是需要模型根据上下文进行推理、综合，然后<strong>生成一个自然语言的句子</strong>作为答案。例如，对于一个需要总结多个信息点的问题，答案可能是一个新的句子。Encoder-Decoder架构非常适合这类任务，因为解码器具有强大的文本生成能力，可以构造出流畅、完整的回答句子。</p>
+<p>在这种设置下，问题和相关文档（或段落）被拼接起来作为编码器的输入。编码器负责理解问题的意图和文档中包含的相关信息。然后，解码器根据编码器提供的上下文，生成一个能够直接回答问题的句子。例如，对于问题“爱因斯坦的主要贡献是什么？”，模型可能会生成“爱因斯坦的主要贡献是提出了相对论，这彻底改变了我们对时间、空间和引力的理解。”。这个答案是基于对原文的理解而生成的，而不是简单地从原文中复制一个片段。T5和BART等模型通过其“文本到文本”的框架，将生成式QA任务统一到了一个标准的Seq2Seq格式中，即输入是“问题：… 上下文：…”，输出是“答案：…”，从而简化了模型的应用和评估。</p>
+<h4 id="3-2-5-文本纠错与风格转换">3.2.5 文本纠错与风格转换</h4>
+<p>Encoder-Decoder架构在需要对文本进行修改、转换或优化的任务中同样表现出色，例如<strong>语法纠错（Grammatical Error Correction, GEC）和风格转换（Style Transfer）</strong>。在这些任务中，输入和输出是同一个语义的两种不同表达形式。Encoder-Decoder架构的“编码-解码”范式天然地适合这类“文本到文本”的转换问题。</p>
+<p>在<strong>语法纠错</strong>任务中，编码器接收一个可能包含语法、拼写或标点错误的句子。解码器的任务则是生成一个语法正确、流畅的版本。由于BART等模型在预训练时就是作为去噪自编码器，学习如何重构被噪声破坏的文本，因此它们在进行语法纠错时，相当于是在执行一种“去噪”操作，性能非常出色。模型能够学会识别各种常见的错误模式，并生成正确的修改。</p>
+<p>在<strong>风格转换</strong>任务中，目标是将一段文本的风格（如正式/非正式、积极/消极、古文/现代文）进行转换，同时保持其核心语义不变。例如，将“嘿，最近咋样？”转换为“您好，请问您近来可好？”。Encoder-Decoder模型可以通过在带有风格标签的平行语料上进行微调来学习这种转换。编码器捕捉输入文本的语义内容，而解码器则根据目标风格的提示，生成具有相应风格特征的文本。这种能力在创意写作、机器翻译的后编辑、以及个性化内容生成等方面有广泛的应用前景。</p>
+<h3 id="3-3-代表模型">3.3 代表模型</h3>
+<h4 id="3-3-1-T5（Text-To-Text-Transfer-Transformer）">3.3.1 T5（Text-To-Text Transfer Transformer）</h4>
+<p>T5（Text-To-Text Transfer Transformer）是由Google Research在2019年提出的一种Encoder-Decoder模型，其核心理念是<strong>将所有NLP任务都统一到一个“文本到文本”（text-to-text）的框架中</strong>。在T5的范式下，无论是翻译、摘要、分类还是问答，输入都是文本，输出也都是文本。例如，对于情感分类任务，输入是“<code>sentiment review: This movie is great!</code>”，输出则是“<code>positive</code>”。这种统一的处理方式使得T5可以使用<strong>相同的模型架构、相同的损失函数和相同的解码过程</strong>来处理所有任务，极大地简化了研究和应用。</p>
+<p>T5模型在一个名为<strong>C4（Colossal Clean Crawled Corpus）<strong>的大型数据集上进行预训练，该数据集是从Common Crawl上清洗得到的，约有</strong>750GB</strong>的文本。其预训练目标是**“Span Corruption”**，即在输入文本中随机选择一些连续的片段（spans），并用一个特殊的哨兵token（如<code>&lt;X&gt;</code>）来替换它们。模型的任务是生成被替换掉的原始文本片段。T5提供了多种尺寸的模型，从T5-Small（约6000万参数）到T5-11B（约110亿参数），以适应不同的计算资源和性能需求。T5的出现证明了Encoder-Decoder架构在处理多样化NLP任务上的通用性和有效性，其“文本到文本”的思想也对后来的大模型研究产生了深远的影响。</p>
+<h4 id="3-3-2-BART（Bidirectional-and-Auto-Regressive-Transformers）">3.3.2 BART（Bidirectional and Auto-Regressive Transformers）</h4>
+<p>BART（Bidirectional and Auto-Regressive Transformers）是由Facebook AI在2019年提出的另一种强大的Encoder-Decoder模型，它被设计为一个<strong>去噪自编码器（denoising autoencoder）</strong> 。BART的架构可以看作是BERT和GPT的结合：它的<strong>编码器是双向的</strong>（像BERT一样），能够理解完整的输入上下文；而它的<strong>解码器是单向的、自回归的</strong>（像GPT一样），能够生成流畅的输出序列。这种结合使得BART在生成和理解任务上都表现出色。</p>
+<p>BART的预训练过程非常独特。它首先用一个<strong>噪声函数（noising function）<strong>来破坏输入文本。这些噪声函数包括：<strong>随机掩码token</strong>（Token Masking）、<strong>随机删除token</strong>（Token Deletion）、<strong>用单个掩码token替换连续的文本片段</strong>（Text Infilling）、<strong>打乱句子的顺序</strong>（Sentence Permutation）以及</strong>旋转文档</strong>（Document Rotation）。然后，编码器接收这个被破坏的序列，而解码器的任务是<strong>重构出原始的、完整的序列</strong>。这种训练方式使得BART非常擅长于处理“修复”或“补全”类任务，如文本摘要（将长文档“恢复”成短摘要）、机器翻译（将一种语言的噪声“恢复”成另一种语言）和问答。BART及其在多语言版本上的扩展<strong>mBART</strong>，在各类Seq2Seq任务中都取得了顶尖的性能，成为了该领域的标杆模型之一 。</p>
+<h4 id="3-3-3-mT5、mBART等多语言变体">3.3.3 mT5、mBART等多语言变体</h4>
+<p>随着全球化的发展，处理多种语言的能力变得越来越重要。基于T5和BART的成功，研究者们开发了它们的<strong>多语言版本</strong>，即mT5和mBART，旨在将在英语上证明有效的预训练方法扩展到多种语言中。</p>
+<ul>
+<li>
+<p><strong>mT5 (Multilingual T5)</strong>：是T5的直接多语言扩展。它在<strong>mC4（multilingual C4）<strong>数据集上进行预训练，该数据集包含了来自</strong>101种语言</strong>的网页文本。mT5采用了与T5相同的“文本到文本”框架和Span Corruption预训练目标。通过在如此多种语言的语料上进行联合预训练，mT5学习到了一个<strong>共享的跨语言表示空间</strong>。这使得它不仅在各种语言的单独任务上表现出色，还展现了强大的**跨语言迁移学习（cross-lingual transfer）**能力。例如，在某种语言的少量数据上微调后，模型可以在另一种从未见过的语言上执行相同任务（零样本跨语言迁移）。mT5为低资源语言（缺乏标注数据的语言）的NLP应用提供了强大的解决方案。</p>
+</li>
+<li>
+<p><strong>mBART (multilingual BART)</strong>：与mT5类似，mBART是BART的多语言版本。它通过在<strong>25种语言</strong>的单语语料上进行预训练。其预训练方式与BART相同，也是作为去噪自编码器，但在输入噪声中增加了对完整句子的掩码。mBART的训练目标是在一种语言内重构被噪声破坏的文本。通过这种方式，mBART的编码器能够为不同语言生成语义上对齐的表示，而解码器则学会了用多种语言生成流畅的文本。这使得mBART在<strong>多语言机器翻译</strong>任务上表现尤为突出。通过在所有语言对上进行联合预训练，mBART能够有效地进行<strong>无监督翻译</strong>（只用单语数据）和<strong>零样本翻译</strong>（在语言A和B、B和C的平行语料上训练后，直接翻译A和C），极大地推动了多语言NLP技术的发展。</p>
+</li>
+</ul>
+<h2 id="4-三种架构的综合对比与选型指南">4. 三种架构的综合对比与选型指南</h2>
+<h3 id="4-1-核心差异总结">4.1 核心差异总结</h3>
+<h4 id="4-1-1-注意力机制对比（双向-vs-单向-vs-交叉）">4.1.1 注意力机制对比（双向 vs. 单向 vs. 交叉）</h4>
+<p>三种架构的核心差异体现在其注意力机制的设计上，这直接决定了它们处理信息的方式和各自的优势。</p>
+<ul>
+<li>
+<p><strong>Encoder-Only（如BERT）</strong>： exclusively 使用<strong>双向自注意力（Bidirectional Self-Attention）</strong>。在处理序列中的任何一个token时，模型都能无差别地“看到”其左侧和右侧的所有其他token。这种全局视野使其能够构建最丰富的上下文表示，非常适合需要深度理解整个输入的任务。其注意力掩码是一个全1矩阵，没有任何位置被屏蔽。</p>
+</li>
+<li>
+<p><strong>Decoder-Only（如GPT）</strong>： exclusively 使用<strong>因果（或单向）自注意力（Causal/Unidirectional Self-Attention）</strong>。在预测第t个token时，模型只能依赖于位置1到t-1的token。这是通过一个上三角掩码矩阵实现的，所有未来位置（j &gt; i）的注意力分数都被设置为负无穷，从而在Softmax后变为0。这种设计强制模型学习自回归生成，是其成为强大文本生成器的基础。</p>
+</li>
+<li>
+<p><strong>Encoder-Decoder（如T5, BART）</strong>：<strong>结合了以上两种注意力机制</strong>。其Encoder部分使用双向自注意力，用于全面理解输入序列。其Decoder部分使用因果自注意力，用于自回归地生成输出序列。此外，它还引入了一个关键的**交叉注意力（Cross-Attention）**机制，其Query来自Decoder，而Key和Value来自Encoder的输出。这种设计使得Decoder在生成过程中能够动态地查询和关注输入序列的相关部分，实现了从输入到输出的有效信息流动。</p>
+</li>
+</ul>
+<p>下表清晰地总结了三种架构在注意力机制上的核心差异：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">架构类型</th>
+<th style="text-align:left">核心注意力机制</th>
+<th style="text-align:left">注意力掩码特点</th>
+<th style="text-align:left">信息流向</th>
+<th style="text-align:left">主要作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Encoder-Only</strong></td>
+<td style="text-align:left">双向自注意力 (Bidirectional Self-Attention)</td>
+<td style="text-align:left">无掩码（全连接）</td>
+<td style="text-align:left">输入序列内部双向流动</td>
+<td style="text-align:left"><strong>深度理解</strong>输入序列的上下文关系。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Decoder-Only</strong></td>
+<td style="text-align:left">因果自注意力 (Causal Self-Attention)</td>
+<td style="text-align:left">上三角掩码（屏蔽未来信息）</td>
+<td style="text-align:left">从左到右单向流动</td>
+<td style="text-align:left"><strong>自回归生成</strong>输出序列。</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Encoder-Decoder</strong></td>
+<td style="text-align:left">双向自注意力 (Encoder) + 因果自注意力 (Decoder) + 交叉注意力 (Cross-Attention)</td>
+<td style="text-align:left">Encoder无掩码，Decoder有上三角掩码</td>
+<td style="text-align:left">Encoder内部双向；Decoder单向；Cross-Attention从Encoder流向Decoder</td>
+<td style="text-align:left"><strong>理解输入</strong>并通过交叉注意力<strong>指导生成输出</strong>，实现序列转换。</td>
+</tr>
+</tbody>
+</table>
+<h4 id="4-1-2-预训练目标对比（MLM-vs-Autoregressive-LM-vs-Seq2Seq）">4.1.2 预训练目标对比（MLM vs. Autoregressive LM vs. Seq2Seq）</h4>
+<p>预训练目标是塑造模型能力的另一关键因素，三种架构采用了截然不同的预训练范式。</p>
+<ul>
+<li>
+<p><strong>Encoder-Only</strong>：主要采用<strong>掩码语言模型（Masked Language Model, MLM）</strong>。模型需要预测输入序列中被随机掩码掉的token。这是一个“填空”任务，迫使模型利用双向上下文来重构缺失的信息，从而学习到强大的语言理解能力。有时也结合下一句预测（NSP）等任务。</p>
+</li>
+<li>
+<p><strong>Decoder-Only</strong>：采用<strong>自回归语言建模（Autoregressive Language Modeling）</strong>。其核心任务是“下一个token预测”，即根据前面所有的token来预测序列中下一个最可能的token。这是一个“接龙”任务，训练模型从左到右生成连贯的文本，使其成为强大的语言生成器。</p>
+</li>
+<li>
+<p><strong>Encoder-Decoder</strong>：采用**序列到序列（Sequence-to-Sequence, Seq2Seq）**的预训练目标。最常见的形式是去噪自编码器（Denoising Autoencoder），如BART的做法，模型需要重构一个被故意破坏（如掩码、删除、打乱）的输入序列。另一个是T5的Span Corruption，预测被替换的文本片段。这些任务要求模型同时具备强大的理解（编码）和生成（解码）能力，非常适合序列转换任务。</p>
+</li>
+</ul>
+<h4 id="4-1-3-模型能力对比（理解-vs-生成-vs-转换）">4.1.3 模型能力对比（理解 vs. 生成 vs. 转换）</h4>
+<p>基于上述的结构和训练目标差异，三种架构最终形成了各自鲜明的核心能力。</p>
+<ul>
+<li>
+<p><strong>Encoder-Only</strong>：核心能力是<strong>深度语言理解（NLU）</strong>。它们 excels at 为输入文本生成高质量的上下文表示，这些表示可以被用于文本分类、命名实体识别、语义相似度计算等需要精确理解文本含义的任务。它们通常不直接用于生成完整的文本序列。</p>
+</li>
+<li>
+<p><strong>Decoder-Only</strong>：核心能力是<strong>开放式文本生成（NLG）</strong>。它们是强大的自回归生成器，能够根据给定的提示（prompt）创作出连贯、流畅、有创意的文本。它们是聊天机器人、文章写作助手、代码生成工具等应用背后的主要技术。随着规模的增大，它们也展现出了一定的理解和推理能力，但其根本优势在于生成。</p>
+</li>
+<li>
+<p><strong>Encoder-Decoder</strong>：核心能力是<strong>序列转换（Seq2Seq）</strong>。它们擅长将一个序列转换为另一个序列，尤其适用于输入和输出之间存在复杂映射关系的任务。机器翻译、文本摘要、生成式问答等都是它们的典型应用场景。它们在理解和生成之间取得了很好的平衡，能够执行需要“先理解，再表达”的复杂任务。</p>
+</li>
+</ul>
+<h3 id="4-2-模型选型决策树">4.2 模型选型决策树</h3>
+<p>在选择使用哪种架构时，可以遵循一个基于任务性质的决策树。</p>
+<style>.koygvvctygua{}</style><img src="/2026/06/12/llm_architecture/model_selection.png" class="koygvvctygua" alt="model_selection">
+<blockquote>
+<p>图8：模型选型决策树示意图</p>
+</blockquote>
+<h4 id="4-2-1-任务是否需要理解整个输入的完整上下文？">4.2.1 任务是否需要理解整个输入的完整上下文？</h4>
+<p>这是首要的决策点。</p>
+<ul>
+<li><strong>是</strong>：如果你的任务需要模型在处理一个token时，必须同时参考其前后的信息，那么你应该优先考虑<strong>Encoder-Only</strong>或<strong>Encoder-Decoder</strong>架构。例如，在命名实体识别中，判断“苹果”是水果还是公司，需要看后面的词；在情感分析中，理解一个句子的整体情感，需要分析所有词的相互作用。对于这类纯粹的<strong>理解（NLU）任务</strong>，如分类、抽取，一个强大的Encoder-Only模型（如BERT、RoBERTa）通常是最高效、性能最好的选择。</li>
+<li><strong>否</strong>：如果你的任务本质上是生成，即从左到右地构建一个序列，那么<strong>Decoder-Only</strong>或<strong>Encoder-Decoder</strong>架构更合适。</li>
+</ul>
+<h4 id="4-2-2-任务是否需要生成一个与输入不同的输出序列？">4.2.2 任务是否需要生成一个与输入不同的输出序列？</h4>
+<p>在确定需要生成能力后，接下来的问题是生成任务的性质。</p>
+<ul>
+<li><strong>是</strong>：如果你的任务是将一个输入序列（如一段英文）转换为另一个输出序列（如一段中文），并且输入和输出之间存在复杂的、非线性的映射关系（如翻译、摘要），那么<strong>Encoder-Decoder</strong>架构是最佳选择。其交叉注意力机制能够很好地处理输入和输出之间的对齐问题，使其在<strong>序列转换（Seq2Seq）任务</strong>上表现卓越。</li>
+<li><strong>否</strong>：如果你的任务是<strong>开放式生成</strong>（如写文章、对话），即输出更多地是输入的“续写”或“展开”，而不是严格的“转换”，那么<strong>Decoder-Only</strong>架构是更自然、更强大的选择。其纯粹的生成能力和灵活性使其成为通用大语言模型的主流选择。</li>
+</ul>
+<h4 id="4-2-3-任务的输入和输出长度、结构是否相似？">4.2.3 任务的输入和输出长度、结构是否相似？</h4>
+<p>这是进一步细化的考量。</p>
+<ul>
+<li><strong>输入输出差异大</strong>：如果输入是长文档，输出是短摘要，或者输入和输出的语言、结构完全不同，这明确指向了<strong>Encoder-Decoder</strong>架构，因为它专为处理不同长度的序列和复杂的结构转换而设计。</li>
+<li><strong>输入输出相似或输出是输入的延续</strong>：如果任务更像是一个“续写”过程，比如代码补全（输入是部分代码，输出是剩余部分）或对话（输入是历史对话，输出是下一句回复），那么<strong>Decoder-Only</strong>架构会更简单、更高效。即使对于一些理解任务，如果使用大型Decoder-Only模型（如GPT-4），也可以通过设计巧妙的prompt（如“请判断以下文本的情感：…”）来完成，尽管其内部机制与Encoder不同，但凭借其强大的上下文学习能力，也能达到很好的效果。</li>
+</ul>
+<h3 id="4-3-架构发展趋势">4.3 架构发展趋势</h3>
+<h4 id="4-3-1-Decoder-Only架构的崛起与通用性">4.3.1 Decoder-Only架构的崛起与通用性</h4>
+<p>近年来，大模型领域一个显著的趋势是<strong>Decoder-Only架构的崛起和主导</strong>。以GPT系列、LLaMA、PaLM、Claude等为代表的Decoder-Only模型，凭借其强大的生成能力和惊人的上下文学习（in-context learning）能力，成为了当前AI浪潮的核心驱动力。这些模型通过在海量数据上进行自回归预训练，并不断扩大规模，展现出了“涌现能力”（emergent abilities），即模型在达到一定规模后，会突然获得一些在小模型中不存在的能力，如复杂推理、遵循指令等。</p>
+<p>Decoder-Only架构的通用性是其成功的关键。通过改变输入prompt，同一个模型可以被用于执行翻译、摘要、问答、代码生成、数学计算等多种任务，而无需修改模型结构或进行任务特定的微调。这种“一个模型搞定所有”的潜力，使得研究和工业界都将大量资源投入到Decoder-Only模型的研发和训练中。虽然其内部是单向注意力，但巨大的模型容量和海量的训练数据似乎赋予了它们一种隐式的理解能力，使其在处理NLU任务时也能与专门的Encoder模型相抗衡，甚至在某些情况下超越它们。因此，<strong>当前最流行、最强大的大语言模型几乎全是Decoder-Only架构</strong>。</p>
+<h4 id="4-3-2-Encoder-Decoder架构在特定领域的持续优势">4.3.2 Encoder-Decoder架构在特定领域的持续优势</h4>
+<p>尽管Decoder-Only架构风头正劲，但Encoder-Decoder架构并未被淘汰，反而在一些<strong>对准确性和可控性要求极高的特定领域任务中，保持着其独特的优势和不可替代的地位</strong>。例如，在<strong>机器翻译</strong>领域，经过精心微调的Encoder-Decoder模型（如mBART, NLLB）在翻译质量，尤其是在处理长句子和复杂句法结构时，通常仍优于同规模的Decoder-Only模型。其明确的编码器-解码器分离和交叉注意力机制，为处理源语言和目标语言之间的对齐提供了更稳定的结构。</p>
+<p>同样，在<strong>文本摘要</strong>任务中，BART和T5等模型因其去噪自编码的预训练目标，能够更好地学习如何压缩和重构文本，生成质量更高的摘要。在这些任务中，输入和输出之间的结构差异较大，需要模型进行更明确的“理解-再生成”过程，而这正是Encoder-Decoder架构的强项。此外，在一些<strong>结构化预测任务</strong>或需要<strong>严格遵循输入格式进行转换</strong>的场景（如数据到文本的生成、代码修复）中，Encoder-Decoder模型也表现出更强的可靠性。因此，可以预见，在未来，Encoder-Decoder架构将继续作为Decoder-Only的重要补充，在特定领域的专业应用中发挥关键作用。</p>
+<h4 id="4-3-3-混合架构与未来探索方向">4.3.3 混合架构与未来探索方向</h4>
+<p>为了结合不同架构的优点，研究者们也在探索各种<strong>混合架构（Hybrid Architectures）</strong>。例如，一些模型尝试在Decoder-Only的基础上，通过修改注意力掩码（如Prefix LM）来赋予其部分双向理解能力。Prefix LM的注意力机制允许输入部分（prompt）使用双向注意力，而生成部分则使用因果注意力，试图在生成能力和理解能力之间找到一个平衡点。Google的<strong>UL2</strong>模型则提出了一种混合的预训练目标，在同一个Encoder-Decoder架构中交替使用去噪自编码器（类似BART）和因果语言模型（类似GPT）的目标，让模型同时具备强大的理解和生成能力。</p>
+<p>未来的探索方向可能包括：</p>
+<ol>
+<li><strong>更高效的注意力机制</strong>：如线性注意力、状态空间模型（SSM）等，旨在解决标准Transformer注意力机制的二次方计算复杂度和长序列处理能力不足的问题。</li>
+<li><strong>模块化和可组合架构</strong>：设计可以由不同组件（如专门的编码器模块、解码器模块、记忆模块）动态组合的模型，以适应更多样化的任务需求。</li>
+<li><strong>多模态架构</strong>：将处理文本的架构与处理图像、音频、视频的架构有效地结合在一起，构建能够理解和生成多种模态内容的统一模型。</li>
+<li><strong>提升可解释性和可控性</strong>：研究如何更好地理解大模型的内部工作机制，并开发能够精确控制其生成内容和行为的技术，以确保AI的安全和可靠。</li>
+</ol>
+<p>总之，虽然Decoder-Only架构目前在通用性上占据优势，但三种架构各有其适用的场景和价值。未来的大模型发展将可能是一个<strong>多样化、专业化与通用化并存</strong>的格局，通过不断的架构创新和训练方法改进，推动人工智能向更强大的方向演进。</p>
+
       
     </div>
 
