@@ -19,12 +19,12 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"yankang18.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.27.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":"flat"},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.json","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
 
-    <meta name="description" content="大语言模型的三种核心架构——Encoder（仅编码器）、Decoder（仅解码器） 和 Encoder-Decoder（编码器-解码器）——分别适用于不同类型的任务。它们的区别根植于注意力机制（Attention）的工作方式：  Encoder使用双向注意力同时理解整个输入序列的上下文；Decoder使用因果（单向）注意力自回归地生成序列； Encoder-Decoder则结合两者，先用Encod">
+    <meta name="description" content="大语言模型的三种核心架构——Encoder（仅编码器）、Decoder（仅解码器） 和 Encoder-Decoder（编码器-解码器）——分别适用于不同类型的任务。它们的区别根植于注意力机制（Attention）的工作方式：Encoder使用双向注意力同时理解整个输入序列的上下文；Decoder使用因果（单向）注意力自回归地生成序列；Encoder-Decoder则结合两者，先用Encoder理">
 <meta property="og:type" content="article">
 <meta property="og:title" content="大模型三种架构详解：Encoder、Decoder、Encoder-Decoder">
 <meta property="og:url" content="https://yankang18.github.io/2026/06/23/llm_architecture/index.html">
 <meta property="og:site_name" content="我的博客">
-<meta property="og:description" content="大语言模型的三种核心架构——Encoder（仅编码器）、Decoder（仅解码器） 和 Encoder-Decoder（编码器-解码器）——分别适用于不同类型的任务。它们的区别根植于注意力机制（Attention）的工作方式：  Encoder使用双向注意力同时理解整个输入序列的上下文；Decoder使用因果（单向）注意力自回归地生成序列； Encoder-Decoder则结合两者，先用Encod">
+<meta property="og:description" content="大语言模型的三种核心架构——Encoder（仅编码器）、Decoder（仅解码器） 和 Encoder-Decoder（编码器-解码器）——分别适用于不同类型的任务。它们的区别根植于注意力机制（Attention）的工作方式：Encoder使用双向注意力同时理解整个输入序列的上下文；Decoder使用因果（单向）注意力自回归地生成序列；Encoder-Decoder则结合两者，先用Encoder理">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="https://yankang18.github.io/2026/06/23/llm_architecture/llm_evolution_tree.png">
 <meta property="og:image" content="https://yankang18.github.io/2026/06/23/llm_architecture/simple_transformer_architecture.png">
@@ -36,7 +36,7 @@
 <meta property="og:image" content="https://yankang18.github.io/2026/06/23/llm_architecture/encoder_decoder_architecture.png">
 <meta property="og:image" content="https://yankang18.github.io/2026/06/23/llm_architecture/model_selection.png">
 <meta property="article:published_time" content="2026-06-23T08:00:00.000Z">
-<meta property="article:modified_time" content="2026-06-28T08:26:49.436Z">
+<meta property="article:modified_time" content="2026-06-28T08:30:15.929Z">
 <meta property="article:author" content="康焱">
 <meta property="article:tag" content="大模型架构">
 <meta name="twitter:card" content="summary">
@@ -279,7 +279,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-06-28 16:26:49" itemprop="dateModified" datetime="2026-06-28T16:26:49+08:00">2026-06-28</time>
+      <time title="修改时间：2026-06-28 16:30:15" itemprop="dateModified" datetime="2026-06-28T16:30:15+08:00">2026-06-28</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -300,12 +300,7 @@
     
     
     
-    <div class="post-body" itemprop="articleBody"><p>大语言模型的三种核心架构——<strong>Encoder（仅编码器）</strong>、<strong>Decoder（仅解码器）</strong> 和 <strong>Encoder-Decoder（编码器-解码器）</strong>——分别适用于不同类型的任务。它们的区别根植于注意力机制（Attention）的工作方式：</p>
-<ul>
-<li>Encoder使用双向注意力同时理解整个输入序列的上下文；Decoder使用因果（单向）注意力自回归地生成序列；</li>
-<li>Encoder-Decoder则结合两者，先用Encoder理解输入，再用Decoder生成输出。因此，Encoder-only架构最擅长文本理解（如分类、抽取）；</li>
-<li>Decoder-only架构最擅长开放式文本生成（如对话、创作），而Encoder-Decoder架构则在序列转换任务（如翻译、摘要）中表现最优。</li>
-</ul>
+    <div class="post-body" itemprop="articleBody"><p>大语言模型的三种核心架构——<strong>Encoder（仅编码器）</strong>、<strong>Decoder（仅解码器）</strong> 和 <strong>Encoder-Decoder（编码器-解码器）</strong>——分别适用于不同类型的任务。它们的区别根植于注意力机制（Attention）的工作方式：Encoder使用双向注意力同时理解整个输入序列的上下文；Decoder使用因果（单向）注意力自回归地生成序列；Encoder-Decoder则结合两者，先用Encoder理解输入，再用Decoder生成输出。因此，Encoder-only架构最擅长文本理解（如分类、抽取）；Decoder-only架构最擅长开放式文本生成（如对话、创作），而Encoder-Decoder架构则在序列转换任务（如翻译、摘要）中表现最优。</p>
 <hr>
 <p>图1是了大语言模型演化树，展示了从2018年到2023年各类大模型按架构类型的分类演进，包括Encoder-Only（如BERT）、Decoder-Only（如GPT系列）和Encoder-Decoder（如T5、BART）三大分支，并重点展示了一些最知名的模型。位于同一分支上的模型具有更紧密的关联。仅解码器模型位于蓝色分支，仅编码器模型位于粉色分支，编码器-解码器模型位于绿色分支。模型在时间轴上的垂直位置代表其发布日期。开源模型以实心方块表示，闭源模型则以空心方块表示。右下角的堆叠条形图展示了各公司和机构发布的模型数量。</p>
 <p><img src="/2026/06/23/llm_architecture/llm_evolution_tree.png" alt="大语言模型演化树，展示了从2018年到2023年各类大模型按架构类型的分类演进，包括Encoder-Only（如BERT）、Decoder-Only（如GPT系列）和Encoder-Decoder（如T5、BART）三大分支"></p>
@@ -497,7 +492,7 @@
 <li><strong>GPT-2</strong>：于2019年发布，将模型规模扩大到<strong>15亿参数</strong>，并在更大规模、更多样化的WebText数据集上进行训练。GPT-2最令人惊讶的能力是其在**零样本（zero-shot）**设置下，无需任何微调就能执行多种NLP任务（如翻译、摘要、问答），证明了大型语言模型可以作为通用的多任务学习器。</li>
 <li><strong>GPT-3</strong>：于2020年发布，是一个真正的“巨兽”，参数量达到了惊人的<strong>1750亿</strong>。GPT-3进一步展示了“规模效应”（scaling laws），即模型性能随规模、数据量和计算量的增加而显著提升。下图展示了GPT-3的上下文学习（In-context Learning）范式，包括Zero-shot、One-shot和Few-shot三种设置，以及与传统Fine-tuning的对比。</li>
 </ul>
-<style>.ixybhgyymgkj{zoom:50%;}</style><img src="/2026/06/23/llm_architecture/in_context_learning.png" class="ixybhgyymgkj" alt="in_context_learning">
+<style>.cuwdfgdsmgpg{zoom:50%;}</style><img src="/2026/06/23/llm_architecture/in_context_learning.png" class="cuwdfgdsmgpg" alt="in_context_learning">
 <blockquote>
 <p>图6：GPT-3的上下文学习（In-context Learning）范式（图片来源：Brown et al., <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2005.14165">“Language Models are Few-Shot Learners”</a>, NeurIPS 2020）</p>
 </blockquote>
@@ -655,7 +650,7 @@
 </ul>
 <h3 id="4-2-模型选型决策树">4.2 模型选型决策树</h3>
 <p>在选择使用哪种架构时，可以遵循一个基于任务性质的决策树。</p>
-<style>.aqneqsqxmkfs{}</style><img src="/2026/06/23/llm_architecture/model_selection.png" class="aqneqsqxmkfs" alt="model_selection">
+<style>.bfwyvvtjpjsc{}</style><img src="/2026/06/23/llm_architecture/model_selection.png" class="bfwyvvtjpjsc" alt="model_selection">
 <blockquote>
 <p>图8：模型选型决策树示意图</p>
 </blockquote>

@@ -265,7 +265,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-06-28 16:26:49" itemprop="dateModified" datetime="2026-06-28T16:26:49+08:00">2026-06-28</time>
+      <time title="修改时间：2026-06-28 16:30:15" itemprop="dateModified" datetime="2026-06-28T16:30:15+08:00">2026-06-28</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -287,12 +287,7 @@
     
     
     <div class="post-body" itemprop="articleBody">
-          <p>大语言模型的三种核心架构——<strong>Encoder（仅编码器）</strong>、<strong>Decoder（仅解码器）</strong> 和 <strong>Encoder-Decoder（编码器-解码器）</strong>——分别适用于不同类型的任务。它们的区别根植于注意力机制（Attention）的工作方式：</p>
-<ul>
-<li>Encoder使用双向注意力同时理解整个输入序列的上下文；Decoder使用因果（单向）注意力自回归地生成序列；</li>
-<li>Encoder-Decoder则结合两者，先用Encoder理解输入，再用Decoder生成输出。因此，Encoder-only架构最擅长文本理解（如分类、抽取）；</li>
-<li>Decoder-only架构最擅长开放式文本生成（如对话、创作），而Encoder-Decoder架构则在序列转换任务（如翻译、摘要）中表现最优。</li>
-</ul>
+          <p>大语言模型的三种核心架构——<strong>Encoder（仅编码器）</strong>、<strong>Decoder（仅解码器）</strong> 和 <strong>Encoder-Decoder（编码器-解码器）</strong>——分别适用于不同类型的任务。它们的区别根植于注意力机制（Attention）的工作方式：Encoder使用双向注意力同时理解整个输入序列的上下文；Decoder使用因果（单向）注意力自回归地生成序列；Encoder-Decoder则结合两者，先用Encoder理解输入，再用Decoder生成输出。因此，Encoder-only架构最擅长文本理解（如分类、抽取）；Decoder-only架构最擅长开放式文本生成（如对话、创作），而Encoder-Decoder架构则在序列转换任务（如翻译、摘要）中表现最优。</p>
 <hr>
 <p>图1是了大语言模型演化树，展示了从2018年到2023年各类大模型按架构类型的分类演进，包括Encoder-Only（如BERT）、Decoder-Only（如GPT系列）和Encoder-Decoder（如T5、BART）三大分支，并重点展示了一些最知名的模型。位于同一分支上的模型具有更紧密的关联。仅解码器模型位于蓝色分支，仅编码器模型位于粉色分支，编码器-解码器模型位于绿色分支。模型在时间轴上的垂直位置代表其发布日期。开源模型以实心方块表示，闭源模型则以空心方块表示。右下角的堆叠条形图展示了各公司和机构发布的模型数量。</p>
 <p><img src="/2026/06/23/llm_architecture/llm_evolution_tree.png" alt="大语言模型演化树，展示了从2018年到2023年各类大模型按架构类型的分类演进，包括Encoder-Only（如BERT）、Decoder-Only（如GPT系列）和Encoder-Decoder（如T5、BART）三大分支"></p>
