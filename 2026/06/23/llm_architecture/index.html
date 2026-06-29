@@ -36,7 +36,7 @@
 <meta property="og:image" content="https://yankang18.github.io/2026/06/23/llm_architecture/encoder_decoder_architecture.png">
 <meta property="og:image" content="https://yankang18.github.io/2026/06/23/llm_architecture/model_selection.png">
 <meta property="article:published_time" content="2026-06-23T08:00:00.000Z">
-<meta property="article:modified_time" content="2026-06-28T12:40:47.395Z">
+<meta property="article:modified_time" content="2026-06-29T22:36:56.477Z">
 <meta property="article:author" content="康焱">
 <meta property="article:tag" content="大模型架构">
 <meta name="twitter:card" content="summary">
@@ -279,7 +279,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-06-28 20:40:47" itemprop="dateModified" datetime="2026-06-28T20:40:47+08:00">2026-06-28</time>
+      <time title="修改时间：2026-06-30 06:36:56" itemprop="dateModified" datetime="2026-06-30T06:36:56+08:00">2026-06-30</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -356,7 +356,7 @@
 <p>而MLM则是一种<strong>去噪自编码器（denoising autoencoder）<strong>的形式，其目标是重构被“噪声”（即掩码）破坏的输入。这种训练方式使得Encoder-only模型能够生成</strong>深层的双向表示</strong>，这些表示可以直接用于下游任务，或者通过添加一个简单的输出层（如分类层）进行微调（fine-tuning）。除了MLM，一些早期的Encoder-only模型（如BERT）还会结合**下一句预测（Next Sentence Prediction, NSP）**任务进行联合预训练，即判断两个句子是否在原文中相邻，以增强模型对句子间关系的理解能力，尽管后续研究表明NSP并非总是必要的。</p>
 <h4 id="1-1-3-模型结构特点：无解码器部分">1.1.3 模型结构特点：无解码器部分</h4>
 <p>Encoder-only架构，顾名思义，<strong>仅使用了Transformer架构中的编码器（Encoder）部分，而完全舍弃了解码器（Decoder）部分</strong> 。一个典型的Encoder-only模型（如BERT）由多个堆叠的Transformer Encoder层组成。每一层Encoder又包含两个主要子层：一个<strong>多头自注意力（Multi-Head Self-Attention）机制</strong>和一个<strong>全连接前馈网络（Position-wise Feed-Forward Network）</strong>。输入文本首先被转换为token嵌入，并加上位置编码（Positional Encoding）以注入序列顺序信息，然后被送入这个堆叠的Encoder结构中。在经过所有层的处理后，模型会为输入序列中的每个token输出一个高维的上下文嵌入向量（contextual embedding）。这些向量是模型对输入文本深层理解的体现，可以被用于各种下游任务。</p>
-<p>由于缺乏Decoder部分，Encoder-only模型<strong>不具备自回归生成文本的能力</strong>。它们不能直接用于生成一个完整的输出序列，例如翻译或撰写文章。相反，它们的输出通常被用作一个**“表示学习器”（representation learner）<strong>或</strong>“特征提取器”（feature extractor）**。例如，在文本分类任务中，可以取输入序列开头的特殊<code>[CLS]</code> token的最终隐藏状态，并将其输入到一个简单的分类层中，以预测文本的类别。在命名实体识别（NER）任务中，则可以使用每个token对应的输出嵌入向量来独立地预测其标签。这种结构上的简洁性使得Encoder-only模型在设计上专注于“理解”输入，而不是“生成”输出，从而在处理各类语言理解任务时表现出高效和强大的性能。</p>
+<p>由于缺乏Decoder部分，Encoder-only模型<strong>不具备自回归生成文本的能力</strong>。它们不能直接用于生成一个完整的输出序列，例如翻译或撰写文章。相反，它们的输出通常被用作一个**“表示学习器”（representation learner）** 或 <strong>“特征提取器”（feature extractor）</strong>。例如，在文本分类任务中，可以取输入序列开头的特殊<code>[CLS]</code> token的最终隐藏状态，并将其输入到一个简单的分类层中，以预测文本的类别。在命名实体识别（NER）任务中，则可以使用每个token对应的输出嵌入向量来独立地预测其标签。这种结构上的简洁性使得Encoder-only模型在设计上专注于“理解”输入，而不是“生成”输出，从而在处理各类语言理解任务时表现出高效和强大的性能。</p>
 <h3 id="1-2-适用任务与原因">1.2 适用任务与原因</h3>
 <h4 id="1-2-1-自然语言理解（NLU）任务">1.2.1 自然语言理解（NLU）任务</h4>
 <p>Encoder-only架构的核心优势在于其对输入文本的<strong>深度双向理解能力</strong>，这使得它成为各类自然语言理解（Natural Language Understanding, NLU）任务的理想选择。NLU任务的本质要求模型能够准确地解析和把握文本的含义、结构和关系，而不是生成新的文本。Encoder-only模型通过其双向自注意力机制和以MLM为核心的预训练方式，能够为输入序列中的每个token生成富含上下文信息的表示。这种表示能力直接对应了NLU任务的需求。无论是判断一段文字的情感倾向，还是识别文本中的特定实体，亦或是分析句子间的逻辑关联，<strong>模型都需要对文本有一个全面的、非局部的理解</strong>。Encoder-only架构通过在预训练阶段就强制模型进行这种双向语境重构，使其在微调阶段能够迅速适应并高效解决各种NLU挑战。</p>
@@ -492,7 +492,7 @@
 <li><strong>GPT-2</strong>：于2019年发布，将模型规模扩大到<strong>15亿参数</strong>，并在更大规模、更多样化的WebText数据集上进行训练。GPT-2最令人惊讶的能力是其在**零样本（zero-shot）**设置下，无需任何微调就能执行多种NLP任务（如翻译、摘要、问答），证明了大型语言模型可以作为通用的多任务学习器。</li>
 <li><strong>GPT-3</strong>：于2020年发布，是一个真正的“巨兽”，参数量达到了惊人的<strong>1750亿</strong>。GPT-3进一步展示了“规模效应”（scaling laws），即模型性能随规模、数据量和计算量的增加而显著提升。下图展示了GPT-3的上下文学习（In-context Learning）范式，包括Zero-shot、One-shot和Few-shot三种设置，以及与传统Fine-tuning的对比。</li>
 </ul>
-<style>.pofnespnlqhq{zoom:50%;}</style><img src="/2026/06/23/llm_architecture/in_context_learning.png" class="pofnespnlqhq" alt="in_context_learning">
+<style>.kgzfarsnzcnc{zoom:50%;}</style><img src="/2026/06/23/llm_architecture/in_context_learning.png" class="kgzfarsnzcnc" alt="in_context_learning">
 <blockquote>
 <p>图6：GPT-3的上下文学习（In-context Learning）范式（图片来源：Brown et al., <a target="_blank" rel="noopener" href="https://arxiv.org/abs/2005.14165">“Language Models are Few-Shot Learners”</a>, NeurIPS 2020）</p>
 </blockquote>
@@ -650,7 +650,7 @@
 </ul>
 <h3 id="4-2-模型选型决策树">4.2 模型选型决策树</h3>
 <p>在选择使用哪种架构时，可以遵循一个基于任务性质的决策树。</p>
-<style>.hmjpleoxulce{}</style><img src="/2026/06/23/llm_architecture/model_selection.png" class="hmjpleoxulce" alt="model_selection">
+<style>.durpgffrlqyz{}</style><img src="/2026/06/23/llm_architecture/model_selection.png" class="durpgffrlqyz" alt="model_selection">
 <blockquote>
 <p>图8：模型选型决策树示意图</p>
 </blockquote>
